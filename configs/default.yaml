@@ -47,6 +47,19 @@ models:
     model: ""                 # fill in the model id you want to use
     base_url: https://generativelanguage.googleapis.com/v1beta/openai/
     api_key_env: GEMINI_API_KEY
+  # CodeCraft gateway: fill base_url and model ids from the CodeCraft dashboard/docs.
+  # provider: openai_compatible if the gateway speaks the OpenAI format, anthropic if it
+  # speaks the Anthropic Messages format.
+  codecraft-main:
+    provider: openai_compatible
+    model: ""
+    base_url: ""
+    api_key_env: CODECRAFT_API_KEY
+  codecraft-dev:
+    provider: openai_compatible
+    model: ""
+    base_url: ""
+    api_key_env: CODECRAFT_API_KEY
   local-small:                # our fine-tuned model served by vLLM/Ollama (Term 2 cascade)
     provider: openai_compatible
     model: ""

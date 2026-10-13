@@ -69,8 +69,9 @@ class AnthropicClient(LLMClient):
         self.name = name
         self.cfg = cfg
         key = os.environ.get(cfg.api_key_env) if cfg.api_key_env else None
+        kwargs = {"base_url": cfg.base_url} if cfg.base_url else {}
         # Without an explicit key the SDK resolves ANTHROPIC_API_KEY / auth profiles itself.
-        self.client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
+        self.client = anthropic.Anthropic(api_key=key, **kwargs) if key else anthropic.Anthropic(**kwargs)
 
     def complete(self, system: str, prompt: str) -> Completion:
         kwargs: dict = {
