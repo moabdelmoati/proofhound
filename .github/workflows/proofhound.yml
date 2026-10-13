@@ -1,0 +1,44 @@
+# Run ProofHound on the functions changed by a pull request and upload results to the
+# GitHub Security tab (code scanning). Requires an LLM API key in repository secrets for
+# harness generation; without one, the analyze-only job still reports SAST findings.
+name: ProofHound
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # upload SARIF to code scanning
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # ProofHound diffs the commit against its parent
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ProofHound
+        run: pip install -e .
+
+      - name: Build the fuzzing sandbox image
+        run: docker build -t proofhound/jazzerjs:latest docker/jazzerjs
+
+      - name: Scan the pull request
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          proofhound scan --repo . --commit "${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "SARIF_FILE=$(ls runs/*/report.sarif | head -1)" >> "$GITHUB_ENV"
+
+      - name: Upload results to code scanning
+        if: always() && env.SARIF_FILE != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ env.SARIF_FILE }}
+          category: proofhound
