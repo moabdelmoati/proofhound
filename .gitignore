@@ -12,3 +12,5 @@ training/data/*
 !training/data/.gitkeep
 vendor/
 benchmark/cases/*/repo/
+benchmark/cases/*/pkg-*/
+benchmark/cases/*/.out/

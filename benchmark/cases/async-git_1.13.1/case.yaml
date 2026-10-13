@@ -1,0 +1,14 @@
+id: async-git_1.13.1
+vuln_class: command-injection
+package: async-git
+version: 1.13.1
+fixed_version: 1.13.2
+sink: lib/reset/index.js:11:16
+fix_commit: https://github.com/omrilotan/async-git/commit/d1950a5021f4e19d92f347614be0d85ce991510d
+exploit: command-injection/async-git_1.13.1/async-git.test.js
+commit: ec24d1a7923971be54b30e93ecea73f236618c5a
+commit_mode: fixed
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/reset/index.js:11:16

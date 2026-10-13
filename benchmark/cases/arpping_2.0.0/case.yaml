@@ -1,0 +1,14 @@
+id: arpping_2.0.0
+vuln_class: command-injection
+package: arpping
+version: 2.0.0
+fixed_version: 3.0.0
+sink: index.js:120:13
+fix_commit: https://github.com/haf-decent/arpping/commit/0db06723f8c3c73a5cc0829c667d45cba25ca44d
+exploit: command-injection/arpping_2.0.0/arpping.test.js
+commit: 23066418bf1c74659a1decf4dfe866d092d896cf
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:120:13

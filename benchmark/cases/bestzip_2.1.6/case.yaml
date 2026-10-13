@@ -1,0 +1,14 @@
+id: bestzip_2.1.6
+vuln_class: command-injection
+package: bestzip
+version: 2.1.6
+fixed_version: 2.1.7
+sink: lib/bestzip.js:27:27
+fix_commit: https://github.com/nfriedly/node-bestzip/commit/45d4a901478c6a8f396c8b959dd6cf8fd3f955b6
+exploit: command-injection/bestzip_2.1.6/bestzip.test.js
+commit: 5701a408a64d12ef6e07c852231b03d3702f4272
+commit_mode: fixed
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/bestzip.js:27:27

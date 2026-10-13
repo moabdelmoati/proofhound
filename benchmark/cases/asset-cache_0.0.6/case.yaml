@@ -1,0 +1,14 @@
+id: asset-cache_0.0.6
+vuln_class: path-traversal
+package: asset-cache
+version: 0.0.6
+fixed_version: null
+sink: lib/asset-cache.js:31:8
+fix_commit: n/a
+exploit: path-traversal/asset-cache_0.0.6/asset-cache.test.js
+commit: 734cfdc58765b2552c9864b132e88ef482a24104
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: path-traversal
+  sink: lib/asset-cache.js:31:8

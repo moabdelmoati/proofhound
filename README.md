@@ -33,5 +33,25 @@ python -m venv .venv
 .venv/Scripts/activate        # Windows; use .venv/bin/activate on Linux/macOS
 pip install -e ".[dev]"
 cp .env.example .env
+docker build -t proofhound/jazzerjs:latest docker/jazzerjs
+docker pull semgrep/semgrep:latest
 proofhound --help
 ```
+
+## Usage
+
+```bash
+# SAST findings on the functions a commit changed
+proofhound analyze --repo <repo> --commit <sha>
+
+# Full pipeline with hand-written harnesses (<dir>/<function name>.js)
+proofhound scan --repo benchmark/cases/command-exists_1.2.2/repo \
+                --harness-dir benchmark/cases/command-exists_1.2.2/harnesses
+
+# Score SAST alone against every benchmark case's ground-truth sink
+proofhound benchmark-sast
+```
+
+Benchmark cases are built from SecBench.js (clone it into `vendor/SecBench.js`) with
+`proofhound.benchmark.secbench.build_case`; each case's `case.yaml` is committed, its `repo/`
+is rebuilt locally.

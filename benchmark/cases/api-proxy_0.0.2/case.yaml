@@ -1,0 +1,14 @@
+id: api-proxy_0.0.2
+vuln_class: path-traversal
+package: api-proxy
+version: 0.0.2
+fixed_version: null
+sink: lib/static.js:40:9
+fix_commit: n/a
+exploit: path-traversal/api-proxy_0.0.2/api-proxy.test.js
+commit: 14c37ab0754885ccd5dfa526e50ea60c0022ca48
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: path-traversal
+  sink: lib/static.js:40:9

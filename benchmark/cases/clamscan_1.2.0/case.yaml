@@ -1,0 +1,14 @@
+id: clamscan_1.2.0
+vuln_class: command-injection
+package: clamscan
+version: 1.2.0
+fixed_version: 1.3.0
+sink: index.js:495:36
+fix_commit: https://github.com/kylefarris/clamscan/commit/5f557c970817fe8c578ec3f7ad3bcbcef4cf5538
+exploit: command-injection/clamscan_1.2.0/clamscan.test.js
+commit: 8de6d79d416150ba5c4da9360bc450ef5e947dd7
+commit_mode: fixed
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:495:36

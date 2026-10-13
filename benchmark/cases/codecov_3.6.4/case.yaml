@@ -1,0 +1,14 @@
+id: codecov_3.6.4
+vuln_class: command-injection
+package: codecov
+version: 3.6.4
+fixed_version: 3.7.1
+sink: lib/codecov.js:419:7
+fix_commit: https://github.com/codecov/codecov-node/commit/c0711c656686e902af2cd92d6aecc8074de4d83d
+exploit: command-injection/codecov_3.6.4/codecov.test.js
+commit: 4fab2ce4466ed0e781f3b43d22dbab962e9d4a81
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/codecov.js:419:7

@@ -1,0 +1,14 @@
+id: angular-http-server_1.0.0
+vuln_class: path-traversal
+package: angular-http-server
+version: 1.0.0
+fixed_version: 1.4.4
+sink: angular-http-server.js:16:29
+fix_commit: https://github.com/simonh1000/angular-http-server/commit/8bafc9577161469f5dea01e0b98ea9c525d063e9
+exploit: path-traversal/angular-http-server_1.0.0/angular-http-server.test.js
+commit: 917c08aa168664d0c3af2f765695728d8d4c7eb1
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: path-traversal
+  sink: angular-http-server.js:16:29

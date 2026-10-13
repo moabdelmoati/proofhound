@@ -1,0 +1,14 @@
+id: apex-publish-static-files_2.0.0
+vuln_class: command-injection
+package: apex-publish-static-files
+version: 2.0.0
+fixed_version: 2.0.1
+sink: index.js:54:25
+fix_commit: https://github.com/vincentmorneau/apex-publish-static-files/commit/2209af8f2b65c24aa55ab757e0e05b958c16f063
+exploit: command-injection/apex-publish-static-files_2.0.0/apex-publish-static-files.test.js
+commit: d6788ff214997872961854f5f013a32c126d11c5
+commit_mode: fixed
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:54:25

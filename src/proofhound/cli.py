@@ -94,6 +94,30 @@ def _print_summary(report: RunReport) -> None:
             console.print(f"  {r.detail}")
 
 
+@app.command("benchmark-sast")
+def benchmark_sast(
+    cases: Path = typer.Option(Path("benchmark/cases"), help="Directory of built cases."),
+    out: Path = typer.Option(Path("experiments/results/sast.json"), help="Output file."),
+    config: Path = typer.Option(Path("configs/default.yaml"), help="Config file."),
+) -> None:
+    """Score the Analyzer (SAST only) against each case's ground-truth sink."""
+    from proofhound.benchmark.runner import run_sast_benchmark
+
+    settings = load_settings(config)
+    analyzer = AnalyzerAgent(JavaScriptAdapter(), SemgrepEngine(), settings.sast.rules_dir)
+    results = run_sast_benchmark(analyzer, cases, out)
+    for r in results:
+        mark = "ERROR" if r.error else ("hit " if r.detected else "miss")
+        console.print(
+            f"{mark}  {r.case:<34} {r.vuln_class:<18} findings={r.findings:<3} "
+            f"fp={r.false_positives:<3} {r.error}"
+        )
+    scored = [r for r in results if not r.error]
+    detected = sum(r.detected for r in scored)
+    fps = sum(r.false_positives for r in scored)
+    console.print(f"\nDetected {detected}/{len(scored)}   SAST false positives: {fps}   -> {out}")
+
+
 @app.command()
 def version() -> None:
     typer.echo(__version__)

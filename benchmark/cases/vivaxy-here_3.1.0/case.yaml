@@ -1,0 +1,14 @@
+id: '@vivaxy-here_3.1.0'
+vuln_class: path-traversal
+package: '@vivaxy/here'
+version: 3.1.0
+fixed_version: 3.2.2
+sink: lib/read-file.js:11:19
+fix_commit: https://github.com/vivaxy/here/commit/298dbab41344dfb7f95f66b1fa7b5cfb436bd4a2
+exploit: path-traversal/@vivaxy-here_3.1.0/vivaxy_here.test.js
+commit: 97dca77cd23056b3fcbba50fdb93254694e1ae3c
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: path-traversal
+  sink: lib/read-file.js:11:19
