@@ -1,0 +1,29 @@
+language: javascript
+
+budgets:
+  run_timeout_s: 900          # whole pipeline per commit
+  fuzz_time_per_target_s: 30
+  max_tokens_per_run: 200000
+
+harness:
+  small_model_repair_attempts: 2
+  large_model_repair_attempts: 2
+  use_sast_hints: true        # false = unguided variant for RQ1
+
+sandbox:
+  image: proofhound/jazzerjs:latest
+  network: none
+  memory: 2g
+  cpus: 2
+
+sast:
+  engine: semgrep
+  rules_dir: rules/semgrep/javascript
+
+cascade:
+  enabled: false              # Term 1: large model only; small models are wired in Term 2
+  triage_escalation_confidence: 0.6
+
+output:
+  dir: runs
+  formats: [json, sarif]

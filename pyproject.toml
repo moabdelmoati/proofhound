@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "proofhound"
+version = "0.1.0"
+description = "Agentic vulnerability discovery and repair: SAST-guided LLM fuzzing for JS/TS."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "typer>=0.12",
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "unidiff>=0.7",
+  "docker>=7.1",
+  "rich>=13.7",
+  "tree-sitter>=0.23",
+  "tree-sitter-javascript>=0.23",
+  "tree-sitter-typescript>=0.23",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+proofhound = "proofhound.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/proofhound"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
