@@ -1,0 +1,14 @@
+id: deferred-exec_0.3.1
+vuln_class: command-injection
+package: deferred-exec
+version: 0.3.1
+fixed_version: null
+sink: lib/deferred-exec.js:42:19
+fix_commit: n/a
+exploit: command-injection/deferred-exec_0.3.1/deferred-exec.test.js
+commit: 2e28b456c818821362c5f8fc731bf7f8279c17de
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/deferred-exec.js:42:19

@@ -1,0 +1,14 @@
+id: curling_0.2.0
+vuln_class: command-injection
+package: curling
+version: 0.2.0
+fixed_version: 1.1.0
+sink: lib/curl-transport.js:56:3
+fix_commit: n/a
+exploit: command-injection/curling_0.2.0/curling.test.js
+commit: dc6901eb5273ad45c4666139fe75b4c2e9392bba
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/curl-transport.js:56:3

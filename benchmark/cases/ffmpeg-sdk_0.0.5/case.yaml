@@ -1,0 +1,14 @@
+id: ffmpeg-sdk_0.0.5
+vuln_class: command-injection
+package: ffmpeg-sdk
+version: 0.0.5
+fixed_version: null
+sink: index.js:9:5
+fix_commit: n/a
+exploit: command-injection/ffmpeg-sdk_0.0.5/ffmpeg-sdk.test.js
+commit: ce472ad7774d9ac675d19b9f10f41363cd7b6da8
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:9:5

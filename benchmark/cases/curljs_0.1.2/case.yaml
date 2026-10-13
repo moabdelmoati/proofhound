@@ -1,0 +1,14 @@
+id: curljs_0.1.2
+vuln_class: command-injection
+package: curljs
+version: 0.1.2
+fixed_version: null
+sink: index.js:37:12
+fix_commit: n/a
+exploit: command-injection/curljs_0.1.2/curljs.test.js
+commit: 396b23e297cd7bb30cc5ce4f109cde9447763bef
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:37:12

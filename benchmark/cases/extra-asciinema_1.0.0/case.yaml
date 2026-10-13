@@ -1,0 +1,14 @@
+id: extra-asciinema_1.0.0
+vuln_class: command-injection
+package: extra-asciinema
+version: 1.0.0
+fixed_version: 1.0.23
+sink: index.js:208:20
+fix_commit: https://github.com/nodef/extra-asciinema/commit/fd1a8a38d6c72e1eb573b2ab03d5e86de8047480
+exploit: command-injection/extra-asciinema_1.0.0/extra-asciinema.test.js
+commit: 211a69fb1d586f0429cc0c9733ee1fe34666d005
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:208:20

@@ -1,0 +1,14 @@
+id: eslint-fixer_0.1.5
+vuln_class: command-injection
+package: eslint-fixer
+version: 0.1.5
+fixed_version: null
+sink: index.js:24:18
+fix_commit: n/a
+exploit: command-injection/eslint-fixer_0.1.5/eslint-fixer.test.js
+commit: 71e7206986224f7896e89749dcc0b126042b8af6
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:24:18

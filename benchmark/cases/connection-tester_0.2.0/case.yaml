@@ -1,0 +1,14 @@
+id: connection-tester_0.2.0
+vuln_class: command-injection
+package: connection-tester
+version: 0.2.0
+fixed_version: 0.2.1
+sink: index.js:15:28
+fix_commit: n/a
+exploit: command-injection/connection-tester_0.2.0/connection-tester.test.js
+commit: fa3e9ae3684a7218e437f08bb96b7c60d7d0f267
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:15:28

@@ -1,0 +1,14 @@
+id: compass-compile_0.0.1
+vuln_class: command-injection
+package: compass-compile
+version: 0.0.1
+fixed_version: null
+sink: lib/compass.js:25:5
+fix_commit: n/a
+exploit: command-injection/compass-compile_0.0.1/compass-compile.test.js
+commit: faa6de789af9ce84def2a8d00674855bfca06cf2
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/compass.js:25:5

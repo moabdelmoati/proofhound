@@ -1,0 +1,14 @@
+id: find-process_1.4.4
+vuln_class: command-injection
+package: find-process
+version: 1.4.4
+fixed_version: null
+sink: lib/utils.js:19:8
+fix_commit: https://github.com/Turistforeningen/node-im-metadata/commit/ea15dddbe0f65694bfde36b78dd488e90f246639
+exploit: command-injection/find-process_1.4.4/find-process.test.js
+commit: f0cae6fd3a542b2df825158799937eeaf998db42
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/utils.js:19:8

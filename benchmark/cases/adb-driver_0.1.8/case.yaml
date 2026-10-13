@@ -1,0 +1,14 @@
+id: adb-driver_0.1.8
+vuln_class: command-injection
+package: adb-driver
+version: 0.1.8
+fixed_version: null
+sink: build/AdbDriver.js:26:25
+fix_commit: n/a
+exploit: command-injection/adb-driver_0.1.8/adb-driver.test.js
+commit: 00771ccab412ade1e57461dce99680da69657b3a
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: build/AdbDriver.js:26:25

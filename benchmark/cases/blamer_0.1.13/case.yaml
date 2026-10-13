@@ -1,0 +1,14 @@
+id: blamer_0.1.13
+vuln_class: command-injection
+package: blamer
+version: 0.1.13
+fixed_version: 1.0.1
+sink: src/vcs/git.js:24:5
+fix_commit: https://github.com/kucherenko/blamer/commit/5fada8c9b6986ecd28942b724fa682e77ce1e11c
+exploit: command-injection/blamer_0.1.13/blamer.test.js
+commit: c0214b1f945a771a6f32ab9e06a128c4725f2eab
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: src/vcs/git.js:24:5

@@ -1,5 +1,38 @@
 [
   {
+    "case": "aaptjs_1.3.1",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:18:3",
+    "changed_functions": 12,
+    "findings": 1,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  },
+  {
+    "case": "adb-driver_0.1.8",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "build/AdbDriver.js:26:25",
+    "changed_functions": 5,
+    "findings": 2,
+    "detected": true,
+    "false_positives": 1,
+    "error": ""
+  },
+  {
+    "case": "alfred-workflow-nodejs_2.0.1",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "alfredNode.js:445:17",
+    "changed_functions": 60,
+    "findings": 11,
+    "detected": true,
+    "false_positives": 10,
+    "error": ""
+  },
+  {
     "case": "angular-http-server_1.0.0",
     "vuln_class": "path-traversal",
     "commit_mode": "introduce",
@@ -77,6 +110,28 @@
     "error": ""
   },
   {
+    "case": "blamer_0.1.13",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "src/vcs/git.js:24:5",
+    "changed_functions": 5,
+    "findings": 6,
+    "detected": true,
+    "false_positives": 4,
+    "error": ""
+  },
+  {
+    "case": "buns_1.1.6",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/index.js:678:9",
+    "changed_functions": 58,
+    "findings": 93,
+    "detected": true,
+    "false_positives": 92,
+    "error": ""
+  },
+  {
     "case": "clamscan_1.2.0",
     "vuln_class": "command-injection",
     "commit_mode": "fixed",
@@ -107,6 +162,171 @@
     "findings": 4,
     "detected": true,
     "false_positives": 3,
+    "error": ""
+  },
+  {
+    "case": "compass-compile_0.0.1",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/compass.js:25:5",
+    "changed_functions": 5,
+    "findings": 1,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  },
+  {
+    "case": "connection-tester_0.2.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:15:28",
+    "changed_functions": 7,
+    "findings": 6,
+    "detected": true,
+    "false_positives": 3,
+    "error": ""
+  },
+  {
+    "case": "curling_0.2.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/curl-transport.js:56:3",
+    "changed_functions": 20,
+    "findings": 6,
+    "detected": true,
+    "false_positives": 5,
+    "error": ""
+  },
+  {
+    "case": "curljs_0.1.2",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:37:12",
+    "changed_functions": 21,
+    "findings": 2,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  },
+  {
+    "case": "deferred-exec_0.3.1",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/deferred-exec.js:42:19",
+    "changed_functions": 10,
+    "findings": 1,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  },
+  {
+    "case": "diskstats_0.0.2",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/stat.js:44:22",
+    "changed_functions": 18,
+    "findings": 5,
+    "detected": true,
+    "false_positives": 4,
+    "error": ""
+  },
+  {
+    "case": "diskusage-ng_0.2.6",
+    "vuln_class": "command-injection",
+    "commit_mode": "fixed",
+    "sink": "lib/posix.js:11:5",
+    "changed_functions": 4,
+    "findings": 1,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  },
+  {
+    "case": "dns-sync_0.1.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "fixed",
+    "sink": "lib/dns-sync.js:21:26",
+    "changed_functions": 2,
+    "findings": 1,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  },
+  {
+    "case": "enpeem_2.2.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:71:22",
+    "changed_functions": 6,
+    "findings": 2,
+    "detected": false,
+    "false_positives": 2,
+    "error": ""
+  },
+  {
+    "case": "eslint-fixer_0.1.5",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:24:18",
+    "changed_functions": 10,
+    "findings": 2,
+    "detected": true,
+    "false_positives": 1,
+    "error": ""
+  },
+  {
+    "case": "extra-asciinema_1.0.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:208:20",
+    "changed_functions": 19,
+    "findings": 16,
+    "detected": true,
+    "false_positives": 14,
+    "error": ""
+  },
+  {
+    "case": "ffmpeg-sdk_0.0.5",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:9:5",
+    "changed_functions": 10,
+    "findings": 5,
+    "detected": true,
+    "false_positives": 4,
+    "error": ""
+  },
+  {
+    "case": "ffmpegdotjs_0.0.4",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:191:9",
+    "changed_functions": 33,
+    "findings": 37,
+    "detected": true,
+    "false_positives": 33,
+    "error": ""
+  },
+  {
+    "case": "find-process_1.4.4",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/utils.js:19:8",
+    "changed_functions": 12,
+    "findings": 8,
+    "detected": true,
+    "false_positives": 7,
+    "error": ""
+  },
+  {
+    "case": "freespace_1.0.4",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:51:16",
+    "changed_functions": 7,
+    "findings": 8,
+    "detected": true,
+    "false_positives": 6,
     "error": ""
   },
   {

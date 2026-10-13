@@ -1,0 +1,14 @@
+id: diskstats_0.0.2
+vuln_class: command-injection
+package: diskstats
+version: 0.0.2
+fixed_version: 2.0.1
+sink: lib/stat.js:44:22
+fix_commit: https://github.com/vincentmorneau/apex-publish-static-files/commit/2209af8f2b65c24aa55ab757e0e05b958c16f063
+exploit: command-injection/diskstats_0.0.2/diskstats.test.js
+commit: 2fbcf49282e3a0433de99fde3f086cda9a212f6c
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/stat.js:44:22

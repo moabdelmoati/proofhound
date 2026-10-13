@@ -1,0 +1,14 @@
+id: ffmpegdotjs_0.0.4
+vuln_class: command-injection
+package: ffmpegdotjs
+version: 0.0.4
+fixed_version: null
+sink: index.js:191:9
+fix_commit: n/a
+exploit: command-injection/ffmpegdotjs_0.0.4/ffmpegdotjs.test.js
+commit: 4be3fcaef24f908567cb2868b3150695ee0b0449
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:191:9

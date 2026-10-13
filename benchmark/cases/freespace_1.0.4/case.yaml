@@ -1,0 +1,14 @@
+id: freespace_1.0.4
+vuln_class: command-injection
+package: freespace
+version: 1.0.4
+fixed_version: null
+sink: index.js:51:16
+fix_commit: n/a
+exploit: command-injection/freespace_1.0.4/freespace.test.js
+commit: 47daaff53f11f76e74fe6462fa01b180c2013367
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:51:16

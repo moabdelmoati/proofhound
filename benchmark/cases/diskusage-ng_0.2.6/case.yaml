@@ -1,0 +1,14 @@
+id: diskusage-ng_0.2.6
+vuln_class: command-injection
+package: diskusage-ng
+version: 0.2.6
+fixed_version: 1.0.0
+sink: lib/posix.js:11:5
+fix_commit: https://github.com/iximiuz/node-diskusage-ng/commit/48e7e093486b528f0c81ec699573e0e4a431b8d3#diff-38182cfe286a150ebcc88df0ec57ed66
+exploit: command-injection/diskusage-ng_0.2.6/diskusage-ng.test.js
+commit: 9aa0fb449b13e492463efa469acb0e80c1e6d2ff
+commit_mode: fixed
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/posix.js:11:5

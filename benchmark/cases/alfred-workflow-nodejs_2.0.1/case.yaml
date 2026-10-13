@@ -1,0 +1,14 @@
+id: alfred-workflow-nodejs_2.0.1
+vuln_class: command-injection
+package: alfred-workflow-nodejs
+version: 2.0.1
+fixed_version: 2.0.1
+sink: alfredNode.js:445:17
+fix_commit: https://github.com/vincentmorneau/apex-publish-static-files/commit/2209af8f2b65c24aa55ab757e0e05b958c16f063
+exploit: command-injection/alfred-workflow-nodejs_2.0.1/alfred-workflow-nodejs.test.js
+commit: 7129afaec50ba4517fde29687aa4516a0d8ca90e
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: alfredNode.js:445:17

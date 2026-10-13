@@ -1,0 +1,14 @@
+id: buns_1.1.6
+vuln_class: command-injection
+package: buns
+version: 1.1.6
+fixed_version: null
+sink: lib/index.js:678:9
+fix_commit: n/a
+exploit: command-injection/buns_1.1.6/buns.test.js
+commit: ab381423d800522709d5db1490747838ae6a4d45
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/index.js:678:9

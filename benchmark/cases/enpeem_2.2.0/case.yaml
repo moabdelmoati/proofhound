@@ -1,0 +1,14 @@
+id: enpeem_2.2.0
+vuln_class: command-injection
+package: enpeem
+version: 2.2.0
+fixed_version: null
+sink: index.js:71:22
+fix_commit: n/a
+exploit: command-injection/enpeem_2.2.0/enpeem.test.js
+commit: d531051bbd8901aa0712d28769dd5aab9660d01b
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:71:22

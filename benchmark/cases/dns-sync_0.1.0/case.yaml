@@ -1,0 +1,14 @@
+id: dns-sync_0.1.0
+vuln_class: command-injection
+package: dns-sync
+version: 0.1.0
+fixed_version: 0.1.3
+sink: lib/dns-sync.js:21:26
+fix_commit: https://github.com/skoranga/node-dns-sync/commit/d9abaae384b198db1095735ad9c1c73d7b890a0d
+exploit: command-injection/dns-sync_0.1.0/dns-sync.test.js
+commit: 95c7eb8bd85e80ccda4f20d49c45e712ad24ea36
+commit_mode: fixed
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/dns-sync.js:21:26
