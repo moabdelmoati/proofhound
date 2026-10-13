@@ -10,5 +10,5 @@ runs/
 corpus/
 training/data/*
 !training/data/.gitkeep
-benchmark/cases/*/workdir/
 vendor/
+benchmark/cases/*/repo/

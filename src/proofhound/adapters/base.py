@@ -53,3 +53,10 @@ class FuzzerReport:
     message: str
     frames: list[str]  # "at fn (file:line:col)" lines, innermost first
     crash_file: str | None  # name under <out>, if the fuzzer saved the input
+
+
+def innermost(functions: list[ChangedFunction], line: int) -> ChangedFunction | None:
+    """The smallest function containing `line` (named ones preferred), or None."""
+    containing = [f for f in functions if f.start_line <= line <= f.end_line]
+    named = [f for f in containing if f.name not in ("<anonymous>", "")] or containing
+    return min(named, key=lambda f: f.end_line - f.start_line, default=None)

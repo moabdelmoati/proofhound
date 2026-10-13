@@ -1,0 +1,14 @@
+id: command-exists_1.2.2
+vuln_class: command-injection
+package: command-exists
+version: 1.2.2
+fixed_version: 0.22.2
+sink: lib/command-exists.js:78:22
+fix_commit: https://github.com/kellyselden/git-diff-apply/commit/106d61d3ae723b4257c2a13e67b95eb40a27e0b5
+exploit: command-injection/command-exists_1.2.2/command-exists.test.js
+commit: 0b5a8a28ac74b31a22c76e79d213321aa9e84668
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: lib/command-exists.js:78:22

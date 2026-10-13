@@ -1,0 +1,46 @@
+rules:
+  - id: proofhound.js.command-injection
+    message: >-
+      [source: $P] [sink: $SINK]
+      Data from a function parameter or request reaches a shell command ($SINK). An attacker who
+      controls it can run arbitrary commands.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      vuln_class: command-injection
+      cwe: "CWE-78"
+    mode: taint
+    options:
+      # Lets the message name the parameter ($P) that reaches the sink.
+      taint_unify_mvars: true
+    pattern-sources:
+      # Library code: any parameter of a function is attacker-controlled input.
+      - patterns:
+          - pattern-either:
+              - pattern-inside: function $F(..., $P, ...) { ... }
+              - pattern-inside: function (..., $P, ...) { ... }
+              - pattern-inside: (..., $P, ...) => { ... }
+              - pattern-inside: (..., $P, ...) => $BODY
+              - pattern-inside: |
+                  class $C { ... $M(..., $P, ...) { ... } ... }
+          - focus-metavariable: $P
+      # Application code: request data.
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.params
+          - pattern: $REQ.body
+          - pattern: $REQ.url
+          - pattern: $REQ.headers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $CP.exec($SINK, ...)
+              - pattern: $CP.execSync($SINK, ...)
+              - pattern: exec($SINK, ...)
+              - pattern: execSync($SINK, ...)
+              - pattern: "$CP.spawn($SINK, ..., {..., shell: true, ...})"
+              - pattern: "$CP.spawnSync($SINK, ..., {..., shell: true, ...})"
+              - pattern: '$CP.execFile("sh", ["-c", $SINK, ...], ...)'
+          # RegExp.prototype.exec is not a shell call.
+          - pattern-not: /.../.exec(...)
+          - focus-metavariable: $SINK

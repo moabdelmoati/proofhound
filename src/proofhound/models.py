@@ -34,6 +34,7 @@ class Finding(BaseModel):
     line: int
     source: str | None = None
     sink: str | None = None
+    vuln_class: str | None = None  # e.g. "command-injection"
     function: ChangedFunction | None = None
 
 

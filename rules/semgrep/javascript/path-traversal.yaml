@@ -1,0 +1,54 @@
+rules:
+  - id: proofhound.js.path-traversal
+    message: >-
+      [source: $P] [sink: $SINK]
+      Data from a function parameter or request is used as a file path ($SINK) without being
+      confined to a base directory. An attacker can read or write files outside it with "../".
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      vuln_class: path-traversal
+      cwe: "CWE-22"
+    mode: taint
+    options:
+      # Lets the message name the parameter ($P) that reaches the sink.
+      taint_unify_mvars: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: function $F(..., $P, ...) { ... }
+              - pattern-inside: function (..., $P, ...) { ... }
+              - pattern-inside: (..., $P, ...) => { ... }
+              - pattern-inside: (..., $P, ...) => $BODY
+              - pattern-inside: |
+                  class $C { ... $M(..., $P, ...) { ... } ... }
+          - focus-metavariable: $P
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.params
+          - pattern: $REQ.body
+          - pattern: $REQ.url
+          - pattern: $REQ.path
+    pattern-sanitizers:
+      # A check that the resolved path stays inside a base directory.
+      - patterns:
+          - pattern-inside: if (<... $X.startsWith(...) ...>) { ... }
+          - pattern: $X
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $FS.readFile($SINK, ...)
+              - pattern: $FS.readFileSync($SINK, ...)
+              - pattern: $FS.createReadStream($SINK, ...)
+              - pattern: $FS.writeFile($SINK, ...)
+              - pattern: $FS.writeFileSync($SINK, ...)
+              - pattern: $FS.createWriteStream($SINK, ...)
+              - pattern: $FS.unlink($SINK, ...)
+              - pattern: $FS.unlinkSync($SINK, ...)
+              - pattern: $FS.readdir($SINK, ...)
+              - pattern: $FS.readdirSync($SINK, ...)
+              - pattern: $FS.stat($SINK, ...)
+              - pattern: $FS.statSync($SINK, ...)
+              - pattern: $FS.promises.readFile($SINK, ...)
+              - pattern: $RES.sendFile($SINK, ...)
+          - focus-metavariable: $SINK
