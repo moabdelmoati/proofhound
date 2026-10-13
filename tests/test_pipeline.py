@@ -4,10 +4,17 @@ import yaml
 
 from proofhound.agents.analyzer import Analysis
 from proofhound.benchmark.runner import score_sast
+from proofhound.config import Settings
 from proofhound.datalog.logger import AttemptLogger, AttemptRecord
 from proofhound.models import (
-    ChangedFunction, Finding, FindingResult, FindingStatus, RunReport, Severity,
+    ChangedFunction,
+    Finding,
+    FindingResult,
+    FindingStatus,
+    RunReport,
+    Severity,
 )
+from proofhound.orchestrator.pipeline import Pipeline
 from proofhound.reporting.json_report import read_json_report, write_json_report
 
 
@@ -67,3 +74,18 @@ def test_attempt_logger_marks_last_attempt(tmp_path):
     log.mark_crash_confirmed("f")
     records = log.read()
     assert [r.crash_confirmed for r in records] == [False, True]
+
+
+def test_pipeline_charges_harness_tokens_when_production_raises(tmp_path):
+    class RaisingHarness:
+        tokens_used = 0
+
+        def produce(self, finding, target, out):
+            self.tokens_used += 17
+            raise RuntimeError("sandbox unavailable")
+
+    pipeline = Pipeline(Settings(), FakeAnalyzer([_finding(1, "a")]), RaisingHarness(), None, None)
+    report = pipeline.run(tmp_path, "commit", tmp_path / "run")
+
+    assert report.tokens_used == 17
+    assert report.results[0].tokens_used == 17

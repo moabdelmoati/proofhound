@@ -44,9 +44,8 @@ proofhound --help
 # SAST findings on the functions a commit changed
 proofhound analyze --repo <repo> --commit <sha>
 
-# Full pipeline with hand-written harnesses (<dir>/<function name>.js)
-proofhound scan --repo benchmark/cases/command-exists_1.2.2/repo \
-                --harness-dir benchmark/cases/command-exists_1.2.2/harnesses
+# Full pipeline with an LLM-generated, execution-checked harness
+proofhound scan --repo benchmark/cases/command-exists_1.2.2/repo
 
 # Score SAST alone against every benchmark case's ground-truth sink
 proofhound benchmark-sast
@@ -55,3 +54,7 @@ proofhound benchmark-sast
 Benchmark cases are built from SecBench.js (clone it into `vendor/SecBench.js`) with
 `proofhound.benchmark.secbench.build_case`; each case's `case.yaml` is committed, its `repo/`
 is rebuilt locally.
+
+`proofhound scan` uses the model selected by `harness.model` in `configs/default.yaml`. Set its
+provider credentials in the environment, then run without a `--harness-dir`; every generated
+harness attempt is appended to `training/data/harness_attempts.jsonl`.

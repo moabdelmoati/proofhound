@@ -9,6 +9,7 @@ from pathlib import Path
 
 from proofhound.adapters.base import FuzzerReport, LanguageAdapter
 from proofhound.agents.base import Agent
+from proofhound.datalog.logger import AttemptLogger
 from proofhound.models import Crash, Finding
 from proofhound.sandbox.docker_runner import DockerSandbox, SandboxResult
 
@@ -31,10 +32,14 @@ class FuzzOutcome:
 class FuzzerAgent(Agent[FuzzJob, FuzzOutcome]):
     name = "fuzzer"
 
-    def __init__(self, sandbox: DockerSandbox, adapter: LanguageAdapter, replays: int = 3):
+    def __init__(
+        self, sandbox: DockerSandbox, adapter: LanguageAdapter, replays: int = 3,
+        attempt_logger: AttemptLogger | None = None,
+    ):
         self.sandbox = sandbox
         self.adapter = adapter
         self.replays = replays
+        self.attempt_logger = attempt_logger
 
     def run(self, data: FuzzJob) -> FuzzOutcome:
         (data.out / "corpus").mkdir(parents=True, exist_ok=True)
@@ -52,6 +57,8 @@ class FuzzerAgent(Agent[FuzzJob, FuzzOutcome]):
             crash.reproduced = self._replay(data, report)
             if crash.reproduced == self.replays:
                 outcome.crashes.append(crash)
+                if self.attempt_logger is not None:
+                    self.attempt_logger.mark_crash_confirmed(data.finding.id)
             else:
                 outcome.other_reports.append(report)
         return outcome

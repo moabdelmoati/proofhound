@@ -83,9 +83,10 @@ class Pipeline:
         try:
             harness = self.harness_step.produce(finding, repo, out)
         except Exception as e:  # noqa: BLE001 - one failing finding must not stop the run
+            tokens = self.harness_step.tokens_used - tokens_before
             return FindingResult(
                 finding=finding, status=FindingStatus.ERROR, detail=f"harness step: {e}",
-                duration_s=time.monotonic() - start,
+                tokens_used=tokens, duration_s=time.monotonic() - start,
             )
         tokens = self.harness_step.tokens_used - tokens_before
         if harness is None:

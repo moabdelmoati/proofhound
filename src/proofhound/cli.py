@@ -10,9 +10,11 @@ from proofhound import __version__
 from proofhound.adapters.javascript import JavaScriptAdapter
 from proofhound.agents.analyzer import AnalyzeJob, AnalyzerAgent
 from proofhound.agents.fuzzer import FuzzerAgent
+from proofhound.agents.harness import HarnessAgent
 from proofhound.config import load_settings
+from proofhound.datalog.logger import AttemptLogger
+from proofhound.llm.client import build_client
 from proofhound.models import FindingStatus, RunReport
-from proofhound.orchestrator.manual_harness import ManualHarnessStep
 from proofhound.orchestrator.pipeline import Pipeline
 from proofhound.sandbox.docker_runner import DockerSandbox
 from proofhound.sast.semgrep import SemgrepEngine
@@ -53,20 +55,32 @@ def scan(
     repo: Path = typer.Option(Path("."), help="Path to the git repository."),
     commit: str = typer.Option("HEAD", help="Commit to analyze against its parent."),
     config: Path = typer.Option(Path("configs/default.yaml"), help="Config file."),
-    harness_dir: Path = typer.Option(
-        ..., help="Directory of hand-written harnesses named <function>.js."
-    ),
 ) -> None:
-    """Analyze a commit's changed functions and confirm findings by fuzzing."""
+    """Analyze a commit, generate harnesses, and confirm findings by fuzzing."""
     settings = load_settings(config)
     adapter = JavaScriptAdapter()
     sandbox = DockerSandbox(settings.sandbox)
+    try:
+        model_config = settings.models[settings.harness.model]
+    except KeyError as e:
+        raise typer.BadParameter(
+            f"Harness model '{settings.harness.model}' is missing from the config models section."
+        ) from e
+    attempt_logger = AttemptLogger(Path("training/data/harness_attempts.jsonl"))
+    harness_agent = HarnessAgent(
+        client=build_client(settings.harness.model, model_config),
+        model=model_config.model or settings.harness.model,
+        adapter=adapter,
+        sandbox=sandbox,
+        settings=settings.harness,
+        logger=attempt_logger,
+    )
     sha = _resolve(repo, commit)
     pipeline = Pipeline(
         settings,
         AnalyzerAgent(adapter, SemgrepEngine(), settings.sast.rules_dir),
-        ManualHarnessStep(harness_dir),
-        FuzzerAgent(sandbox, adapter),
+        harness_agent,
+        FuzzerAgent(sandbox, adapter, attempt_logger=attempt_logger),
         adapter,
     )
     run_dir = settings.output.dir / sha[:12]
