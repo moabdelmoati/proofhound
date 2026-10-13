@@ -1,0 +1,39 @@
+rules:
+  - id: proofhound.js.redos
+    message: >-
+      [source: $P] [sink: $SINK]
+      A function parameter or request value is matched against a regular expression ($SINK). If
+      the pattern has catastrophic backtracking, a crafted string causes denial of service.
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      vuln_class: redos
+      cwe: "CWE-1333"
+    mode: taint
+    options:
+      taint_unify_mvars: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: function $F(..., $P, ...) { ... }
+              - pattern-inside: function (..., $P, ...) { ... }
+              - pattern-inside: (..., $P, ...) => { ... }
+              - pattern-inside: (..., $P, ...) => $BODY
+          - focus-metavariable: $P
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+          - pattern: $REQ.headers
+    pattern-sinks:
+      # Tainted string tested by a regex. The regex's own complexity is confirmed dynamically
+      # (the Fuzzer's timeout detector), so this flags a candidate, not a proven ReDoS.
+      - patterns:
+          - pattern-either:
+              - pattern: $RE.test($SINK)
+              - pattern: $RE.exec($SINK)
+              - pattern: $SINK.match($RE)
+              - pattern: $SINK.replace($RE, ...)
+              - pattern: $SINK.search($RE)
+              - pattern: $SINK.split($RE)
+          - focus-metavariable: $SINK

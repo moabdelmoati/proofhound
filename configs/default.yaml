@@ -28,7 +28,7 @@ cascade:
 
 output:
   dir: runs
-  formats: [json]             # sarif in Term 2
+  formats: [json, sarif]
 
 # Models any agent can use. API keys are read from the environment / .env, never from this file.
 models:

@@ -1,0 +1,39 @@
+rules:
+  - id: proofhound.js.code-injection
+    message: >-
+      [source: $P] [sink: $SINK]
+      Data from a function parameter or request reaches a dynamic code evaluator ($SINK). An
+      attacker who controls it can execute arbitrary JavaScript.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      vuln_class: code-injection
+      cwe: "CWE-94"
+    mode: taint
+    options:
+      taint_unify_mvars: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: function $F(..., $P, ...) { ... }
+              - pattern-inside: function (..., $P, ...) { ... }
+              - pattern-inside: (..., $P, ...) => { ... }
+              - pattern-inside: (..., $P, ...) => $BODY
+              - pattern-inside: |
+                  class $C { ... $M(..., $P, ...) { ... } ... }
+          - focus-metavariable: $P
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.params
+          - pattern: $REQ.body
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: eval($SINK)
+              - pattern: new Function(..., $SINK)
+              - pattern: Function(..., $SINK)
+              - pattern: $VM.runInNewContext($SINK, ...)
+              - pattern: $VM.runInThisContext($SINK, ...)
+              - pattern: $VM.runInContext($SINK, ...)
+              - pattern: $VM.compileFunction($SINK, ...)
+          - focus-metavariable: $SINK

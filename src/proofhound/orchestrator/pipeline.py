@@ -19,6 +19,7 @@ from proofhound.config import Settings
 from proofhound.models import Finding, FindingResult, FindingStatus, Harness, RunReport
 from proofhound.orchestrator.budget import Budget
 from proofhound.reporting.json_report import write_json_report
+from proofhound.reporting.sarif import write_sarif_report
 
 
 class HarnessStep(Protocol):
@@ -73,6 +74,8 @@ class Pipeline:
         report.duration_s = time.monotonic() - start
         report.tokens_used = budget.tokens_used
         write_json_report(report, run_dir)
+        if "sarif" in self.settings.output.formats:
+            write_sarif_report(report, run_dir)
         return report
 
     def _process(self, finding: Finding, repo: Path, out: Path) -> FindingResult:

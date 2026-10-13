@@ -27,9 +27,9 @@
     "commit_mode": "introduce",
     "sink": "lib/static.js:40:9",
     "changed_functions": 10,
-    "findings": 4,
+    "findings": 10,
     "detected": true,
-    "false_positives": 3,
+    "false_positives": 9,
     "error": ""
   },
   {
@@ -38,9 +38,9 @@
     "commit_mode": "introduce",
     "sink": "index.js:120:13",
     "changed_functions": 36,
-    "findings": 2,
+    "findings": 7,
     "detected": true,
-    "false_positives": 1,
+    "false_positives": 6,
     "error": ""
   },
   {
@@ -60,9 +60,9 @@
     "commit_mode": "fixed",
     "sink": "lib/reset/index.js:11:16",
     "changed_functions": 12,
-    "findings": 6,
+    "findings": 7,
     "detected": true,
-    "false_positives": 5,
+    "false_positives": 6,
     "error": ""
   },
   {
@@ -82,9 +82,9 @@
     "commit_mode": "fixed",
     "sink": "index.js:495:36",
     "changed_functions": 51,
-    "findings": 1,
-    "detected": false,
-    "false_positives": 1,
+    "findings": 6,
+    "detected": true,
+    "false_positives": 5,
     "error": ""
   },
   {
@@ -93,9 +93,9 @@
     "commit_mode": "introduce",
     "sink": "lib/codecov.js:419:7",
     "changed_functions": 11,
-    "findings": 6,
+    "findings": 21,
     "detected": true,
-    "false_positives": 5,
+    "false_positives": 20,
     "error": ""
   },
   {

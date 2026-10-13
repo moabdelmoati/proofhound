@@ -55,26 +55,37 @@ def scan(
     repo: Path = typer.Option(Path("."), help="Path to the git repository."),
     commit: str = typer.Option("HEAD", help="Commit to analyze against its parent."),
     config: Path = typer.Option(Path("configs/default.yaml"), help="Config file."),
+    harness_dir: Path = typer.Option(
+        None,
+        help="Use hand-written harnesses (<function>.js) instead of the LLM. "
+        "No API key needed; used for testing and the demo fallback.",
+    ),
 ) -> None:
     """Analyze a commit, generate harnesses, and confirm findings by fuzzing."""
     settings = load_settings(config)
     adapter = JavaScriptAdapter()
     sandbox = DockerSandbox(settings.sandbox)
-    try:
-        model_config = settings.models[settings.harness.model]
-    except KeyError as e:
-        raise typer.BadParameter(
-            f"Harness model '{settings.harness.model}' is missing from the config models section."
-        ) from e
     attempt_logger = AttemptLogger(Path("training/data/harness_attempts.jsonl"))
-    harness_agent = HarnessAgent(
-        client=build_client(settings.harness.model, model_config),
-        model=model_config.model or settings.harness.model,
-        adapter=adapter,
-        sandbox=sandbox,
-        settings=settings.harness,
-        logger=attempt_logger,
-    )
+    if harness_dir is not None:
+        from proofhound.orchestrator.manual_harness import ManualHarnessStep
+
+        harness_agent = ManualHarnessStep(harness_dir)
+    else:
+        try:
+            model_config = settings.models[settings.harness.model]
+        except KeyError as e:
+            raise typer.BadParameter(
+                f"Harness model '{settings.harness.model}' is missing from the config models "
+                "section."
+            ) from e
+        harness_agent = HarnessAgent(
+            client=build_client(settings.harness.model, model_config),
+            model=model_config.model or settings.harness.model,
+            adapter=adapter,
+            sandbox=sandbox,
+            settings=settings.harness,
+            logger=attempt_logger,
+        )
     sha = _resolve(repo, commit)
     pipeline = Pipeline(
         settings,
