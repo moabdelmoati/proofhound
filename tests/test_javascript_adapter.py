@@ -74,3 +74,18 @@ def test_semgrep_result_to_finding():
     assert finding.sink == "'command -v ' + commandName"
     assert finding.message == "Data reaches a shell."
     assert finding.vuln_class == "command-injection"
+
+
+def test_python_adapter_extracts_qualified_names():
+    from proofhound.adapters.python import PythonAdapter
+
+    src = b"def handler(req, path):\n    return path\n\nclass A:\n    def m(self, x):\n        return x\n"
+    fns = PythonAdapter().functions(Path("x.py"), src)
+    assert [(f.name, f.start_line) for f in fns] == [("handler", 1), ("A.m", 5)]
+
+
+def test_adapter_registry():
+    from proofhound.adapters import get_adapter
+
+    assert get_adapter("javascript").name == "javascript"
+    assert get_adapter("python").name == "python"

@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 
 from proofhound import __version__
+from proofhound.adapters import get_adapter
 from proofhound.adapters.javascript import JavaScriptAdapter
 from proofhound.agents.analyzer import AnalyzeJob, AnalyzerAgent
 from proofhound.agents.fuzzer import FuzzerAgent
@@ -35,10 +36,16 @@ def analyze(
     repo: Path = typer.Option(Path("."), help="Path to the git repository."),
     commit: str = typer.Option("HEAD", help="Commit to analyze against its parent."),
     config: Path = typer.Option(Path("configs/default.yaml"), help="Config file."),
+    language: str = typer.Option(
+        None, help="javascript | python. Defaults to the config's language."
+    ),
 ) -> None:
     """List SAST findings on the functions changed by a commit (no fuzzing)."""
     settings = load_settings(config)
-    analyzer = AnalyzerAgent(JavaScriptAdapter(), SemgrepEngine(), settings.sast.rules_dir)
+    lang = language or settings.language
+    adapter = get_adapter(lang)
+    rules_dir = settings.sast.rules_dir if lang == "javascript" else Path(f"rules/semgrep/{lang}")
+    analyzer = AnalyzerAgent(adapter, SemgrepEngine(), rules_dir)
     analysis = analyzer.run(AnalyzeJob(repo, _resolve(repo, commit)))
     console.print(
         f"Changed functions: {len(analysis.changed_functions)}   "

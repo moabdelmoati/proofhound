@@ -1,0 +1,31 @@
+rules:
+  - id: proofhound.py.command-injection
+    message: >-
+      [source: $P] [sink: $SINK]
+      Data from a function parameter reaches a shell command ($SINK). An attacker who controls it
+      can run arbitrary commands.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vuln_class: command-injection
+      cwe: "CWE-78"
+    mode: taint
+    options:
+      taint_unify_mvars: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  def $F(..., $P, ...):
+                      ...
+          - focus-metavariable: $P
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: os.system($SINK)
+              - pattern: os.popen($SINK, ...)
+              - pattern: subprocess.call($SINK, ..., shell=True, ...)
+              - pattern: subprocess.run($SINK, ..., shell=True, ...)
+              - pattern: subprocess.Popen($SINK, ..., shell=True, ...)
+              - pattern: subprocess.check_output($SINK, ..., shell=True, ...)
+          - focus-metavariable: $SINK

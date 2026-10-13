@@ -1,0 +1,31 @@
+rules:
+  - id: proofhound.py.path-traversal
+    message: >-
+      [source: $P] [sink: $SINK]
+      Data from a function parameter is used as a file path ($SINK) without being confined to a
+      base directory. An attacker can read or write files outside it with "../".
+    severity: WARNING
+    languages: [python]
+    metadata:
+      vuln_class: path-traversal
+      cwe: "CWE-22"
+    mode: taint
+    options:
+      taint_unify_mvars: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  def $F(..., $P, ...):
+                      ...
+          - focus-metavariable: $P
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: open($SINK, ...)
+              - pattern: io.open($SINK, ...)
+              - pattern: os.remove($SINK)
+              - pattern: os.unlink($SINK)
+              - pattern: shutil.copy($SINK, ...)
+              - pattern: shutil.copyfile($SINK, ...)
+          - focus-metavariable: $SINK
