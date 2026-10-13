@@ -156,7 +156,63 @@ Pulled earlier from the original Term 2 plan and added on top:
 | 4 — Infra / Integration | SARIF, CLI, CI/GitHub Action, dashboard | Patcher; Python fuzzing (Atheris); Go if time |
 | 5 — ML / Research | Literature review; base-model selection; training data | Train LoRA adapters; RQ6; paper writing |
 
-## 12. Deliverables and risks
+## 12. Term 2 plan (weeks 15–28)
+
+Term 1 produced the full static side, the fuzzing side, the orchestrator, the fused confidence
+score, CI integration, and the benchmark harness. Term 2 completes the dynamic intelligence, the
+cascade of our own models, and the research evaluation.
+
+### 12.1 Full triage — PoV and CVSS
+The Term 1 triage already fuses SAST and fuzzing into one confidence. Term 2 adds, per confirmed
+finding: a standalone proof-of-vulnerability script that re-triggers the crash outside the fuzzer,
+LLM-assisted crash classification, and a CVSS v3.1 severity estimate. The confidence score stays
+rule-based and auditable; the LLM only fills the explanatory and severity fields.
+
+### 12.2 Patcher
+A new agent proposes a minimal patch and a regression test for each confirmed finding. A patch is
+accepted only if, after applying it, the PoV no longer triggers the crash and the package's
+existing test suite still passes — execution is the judge, exactly as for the Harness Agent.
+
+### 12.3 The full cascade and our own models
+We fine-tune a LoRA adapter per agent (Harness, Patcher, Triage, Analyzer filter) on one shared
+open code base model with QLoRA on Colab, using the verified distillation data that Term 1 logs
+from every pipeline run. Each adapter is wired into the cascade: our model first, execution or
+large-model check second, large-model escalation only on failure or low confidence. RQ6 measures
+the share of work our models complete alone and the cost and time saved.
+
+### 12.4 Continuous fuzzing and scheduling
+The corpus persists across commits so later runs start from earlier coverage, and the Scheduler
+agent assigns fuzzing time by severity across the findings of a commit.
+
+### 12.5 Second fuzzed language (Python) and optional breadth
+Term 1 implemented Python on the analysis side through the adapter layer. Term 2 completes Python
+fuzzing with Atheris and extends the benchmark with PyPA/OSV Python advisories (RQ5). If time
+allows: a second SAST engine (CodeQL) for comparison, a results dashboard, and Go via the built-in
+`go test -fuzz`.
+
+### 12.6 Research evaluation and paper
+All configurations and ablations for RQ1–RQ6 on the full benchmark: SAST-only vs. fuzzing-only vs.
+ProofHound; guided vs. unguided harnesses; multi-agent vs. single-agent; the cascade vs. a
+large-model-only pipeline; and the per-module ablation. Threats to validity (benchmark size and
+noise, LLM non-determinism, fuzzing-time limits) are addressed with repeated runs, fixed budgets,
+and logged seeds. The target outcome is a paper for a software-security or software-engineering
+venue, selected with the supervisor.
+
+### 12.7 Timeline
+
+| Phase | Weeks | Work | Deliverable |
+|---|---|---|---|
+| T2-A Intelligence | 15–19 | Scheduler; full triage (PoV + CVSS); Patcher with regression tests; continuous fuzzing; scale up distillation data | Full multi-agent pipeline |
+| T2-A2 Model training | 17–21 | Train Harness, Patcher, Triage adapters on Colab; Analyzer filter if time; wire the cascade with large-model escalation | Our models in the cascade |
+| T2-B Languages & breadth | 20–22 | Python fuzzing (Atheris); Go if time; optional CodeQL comparison and dashboard | Second fuzzed language |
+| T2-C Evaluation | 23–26 | Full benchmark; all configurations and ablations; cascade vs. large-model-only; analysis | Results and figures |
+| T2-D Writing | 27–28 | Paper, final report, defense demo | Paper draft; final thesis |
+
+If time is short, Go and the dashboard are dropped first, then the Analyzer filter, then the
+optional second SAST engine; the Harness model, the core pipeline, the benchmark, and the
+evaluation are protected.
+
+## 13. Deliverables and risks
 
 **Deliverables:** an open-source tool (CLI and CI integration), our fine-tuned agent models and
 their training datasets, a benchmark with ground truth, a research-paper draft, and the graduation
