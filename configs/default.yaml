@@ -6,6 +6,8 @@ budgets:
   max_tokens_per_run: 200000
 
 harness:
+  model: claude               # key in `models` below
+  probe_time_s: 5             # short fuzz run used to check coverage growth
   small_model_repair_attempts: 2
   large_model_repair_attempts: 2
   use_sast_hints: true        # false = unguided variant for RQ1
@@ -26,4 +28,26 @@ cascade:
 
 output:
   dir: runs
-  formats: [json, sarif]
+  formats: [json]             # sarif in Term 2
+
+# Models any agent can use. API keys are read from the environment / .env, never from this file.
+models:
+  claude:
+    provider: anthropic
+    model: claude-opus-5-5
+    api_key_env: ANTHROPIC_API_KEY
+    effort: high
+    fallbacks: default        # server-side fallback if the model declines a request
+  openai:
+    provider: openai
+    model: ""                 # fill in the model id you want to use
+    api_key_env: OPENAI_API_KEY
+  gemini:
+    provider: openai_compatible
+    model: ""                 # fill in the model id you want to use
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    api_key_env: GEMINI_API_KEY
+  local-small:                # our fine-tuned model served by vLLM/Ollama (Term 2 cascade)
+    provider: openai_compatible
+    model: ""
+    base_url: http://localhost:8000/v1

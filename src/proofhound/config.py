@@ -5,6 +5,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel
 
+from proofhound.llm.client import ModelConfig
+
 
 class Budgets(BaseModel):
     run_timeout_s: int = 900
@@ -13,6 +15,8 @@ class Budgets(BaseModel):
 
 
 class HarnessSettings(BaseModel):
+    model: str = "claude"  # key in `models`
+    probe_time_s: int = 5  # short fuzz run used to check coverage growth
     small_model_repair_attempts: int = 2
     large_model_repair_attempts: int = 2
     use_sast_hints: bool = True
@@ -37,7 +41,7 @@ class CascadeSettings(BaseModel):
 
 class OutputSettings(BaseModel):
     dir: Path = Path("runs")
-    formats: list[str] = ["json", "sarif"]
+    formats: list[str] = ["json"]
 
 
 class Settings(BaseModel):
@@ -48,6 +52,7 @@ class Settings(BaseModel):
     sast: SastSettings = SastSettings()
     cascade: CascadeSettings = CascadeSettings()
     output: OutputSettings = OutputSettings()
+    models: dict[str, ModelConfig] = {}
 
 
 def load_settings(path: Path) -> Settings:
