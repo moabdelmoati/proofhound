@@ -48,9 +48,12 @@ class Harness(BaseModel):
 
 class Crash(BaseModel):
     finding_id: str
+    kind: str  # bug-detector title, e.g. "Command Injection"
     input_path: Path
     stack_trace: str
-    signature: str  # used for deduplication
+    signature: str  # kind + first frame in the target; used for deduplication
+    sink_location: str | None = None  # "file:line:col" of the first frame in the target
+    reproduced: int = 0  # successful re-runs of the crash input
 
 
 class TriageResult(BaseModel):
