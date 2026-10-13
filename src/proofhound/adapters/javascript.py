@@ -78,22 +78,24 @@ class JavaScriptAdapter(LanguageAdapter):
     def functions(self, file: Path, source: bytes) -> list[ChangedFunction]:
         """Every function in the file, outermost first."""
         parser = Parser(_LANGUAGES[file.suffix])
-        found: list[ChangedFunction] = []
-        stack = [parser.parse(source).root_node]
-        while stack:
-            node = stack.pop()
+        tree = parser.parse(source)  # keep a reference: nodes are invalid once the tree is freed
+        # Walk with a cursor and keep only plain values: holding many Node objects (e.g. a
+        # node.children stack) crashes tree-sitter 0.26 during garbage collection on large files.
+        spans: list[tuple[str, int, int]] = []
+        cursor = tree.walk()
+        while True:
+            node = cursor.node
             if node.type in FUNCTION_NODES:
-                found.append(
-                    ChangedFunction(
-                        file=file,
-                        name=function_name(node),
-                        start_line=node.start_point.row + 1,
-                        end_line=node.end_point.row + 1,
-                        language=self.name,
-                    )
-                )
-            stack.extend(reversed(node.children))
-        return found
+                spans.append((function_name(node), node.start_point.row + 1, node.end_point.row + 1))
+            if cursor.goto_first_child():
+                continue
+            while not cursor.goto_next_sibling():
+                if not cursor.goto_parent():
+                    return [
+                        ChangedFunction(file=file, name=name, start_line=start, end_line=end,
+                                        language=self.name)
+                        for name, start, end in spans
+                    ]
 
     def extract_functions(
         self, file: Path, changed_lines: set[int], root: Path = Path(".")

@@ -1,0 +1,123 @@
+[
+  {
+    "case": "angular-http-server_1.0.0",
+    "vuln_class": "path-traversal",
+    "commit_mode": "introduce",
+    "sink": "angular-http-server.js:16:29",
+    "changed_functions": 4,
+    "findings": 4,
+    "detected": true,
+    "false_positives": 2,
+    "error": ""
+  },
+  {
+    "case": "apex-publish-static-files_2.0.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "fixed",
+    "sink": "index.js:54:25",
+    "changed_functions": 6,
+    "findings": 1,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  },
+  {
+    "case": "api-proxy_0.0.2",
+    "vuln_class": "path-traversal",
+    "commit_mode": "introduce",
+    "sink": "lib/static.js:40:9",
+    "changed_functions": 10,
+    "findings": 4,
+    "detected": true,
+    "false_positives": 3,
+    "error": ""
+  },
+  {
+    "case": "arpping_2.0.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "index.js:120:13",
+    "changed_functions": 36,
+    "findings": 2,
+    "detected": true,
+    "false_positives": 1,
+    "error": ""
+  },
+  {
+    "case": "asset-cache_0.0.6",
+    "vuln_class": "path-traversal",
+    "commit_mode": "introduce",
+    "sink": "lib/asset-cache.js:31:8",
+    "changed_functions": 6,
+    "findings": 2,
+    "detected": true,
+    "false_positives": 1,
+    "error": ""
+  },
+  {
+    "case": "async-git_1.13.1",
+    "vuln_class": "command-injection",
+    "commit_mode": "fixed",
+    "sink": "lib/reset/index.js:11:16",
+    "changed_functions": 12,
+    "findings": 6,
+    "detected": true,
+    "false_positives": 5,
+    "error": ""
+  },
+  {
+    "case": "bestzip_2.1.6",
+    "vuln_class": "command-injection",
+    "commit_mode": "fixed",
+    "sink": "lib/bestzip.js:27:27",
+    "changed_functions": 11,
+    "findings": 7,
+    "detected": true,
+    "false_positives": 6,
+    "error": ""
+  },
+  {
+    "case": "clamscan_1.2.0",
+    "vuln_class": "command-injection",
+    "commit_mode": "fixed",
+    "sink": "index.js:495:36",
+    "changed_functions": 51,
+    "findings": 1,
+    "detected": false,
+    "false_positives": 1,
+    "error": ""
+  },
+  {
+    "case": "codecov_3.6.4",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/codecov.js:419:7",
+    "changed_functions": 11,
+    "findings": 6,
+    "detected": true,
+    "false_positives": 5,
+    "error": ""
+  },
+  {
+    "case": "command-exists_1.2.2",
+    "vuln_class": "command-injection",
+    "commit_mode": "introduce",
+    "sink": "lib/command-exists.js:78:22",
+    "changed_functions": 17,
+    "findings": 4,
+    "detected": true,
+    "false_positives": 3,
+    "error": ""
+  },
+  {
+    "case": "@vivaxy-here_3.1.0",
+    "vuln_class": "path-traversal",
+    "commit_mode": "introduce",
+    "sink": "lib/read-file.js:11:19",
+    "changed_functions": 2,
+    "findings": 1,
+    "detected": true,
+    "false_positives": 0,
+    "error": ""
+  }
+]

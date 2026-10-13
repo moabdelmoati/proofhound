@@ -17,7 +17,7 @@ dependencies = [
   "anthropic>=1.13",
   "openai>=3.29",
   "python-dotenv>=1.0",
-  "tree-sitter>=0.23",
+  "tree-sitter>=0.25,<0.26",  # 0.26.0 crashes (access violation) on larger files
   "tree-sitter-javascript>=0.23",
   "tree-sitter-typescript>=0.23",
 ]
