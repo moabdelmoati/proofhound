@@ -15,6 +15,7 @@ from proofhound import __version__
 from proofhound.adapters.base import LanguageAdapter
 from proofhound.agents.analyzer import AnalyzeJob, AnalyzerAgent
 from proofhound.agents.fuzzer import FuzzerAgent, FuzzJob
+from proofhound.agents.triage import fuse
 from proofhound.config import Settings
 from proofhound.models import Finding, FindingResult, FindingStatus, Harness, RunReport
 from proofhound.orchestrator.budget import Budget
@@ -107,7 +108,12 @@ class Pipeline:
                 tokens_used=tokens, detail=f"fuzzer: {e}", duration_s=time.monotonic() - start,
             )
         status = FindingStatus.CONFIRMED if outcome.crashes else FindingStatus.NOT_CONFIRMED
+        fusion = fuse(
+            finding.severity, finding.vuln_class, status, outcome.crashes,
+            self.settings.budgets.fuzz_time_per_target_s,
+        )
         return FindingResult(
             finding=finding, status=status, harness=harness, crashes=outcome.crashes,
+            confidence=fusion.confidence, confidence_rationale=fusion.rationale,
             tokens_used=tokens, duration_s=time.monotonic() - start,
         )

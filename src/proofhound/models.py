@@ -86,6 +86,8 @@ class FindingResult(BaseModel):
     status: FindingStatus
     harness: Harness | None = None
     crashes: list[Crash] = []
+    confidence: float | None = None  # fused SAST+fuzzing score, set by triage
+    confidence_rationale: str = ""
     tokens_used: int = 0
     duration_s: float = 0.0
     detail: str = ""  # error message or the reason for the status

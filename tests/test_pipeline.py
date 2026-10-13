@@ -89,3 +89,31 @@ def test_pipeline_charges_harness_tokens_when_production_raises(tmp_path):
 
     assert report.tokens_used == 17
     assert report.results[0].tokens_used == 17
+
+
+def test_fusion_confirmed_class_match_is_high():
+    from proofhound.agents.triage import fuse
+    from proofhound.models import Crash, FindingStatus, Severity
+
+    crash = Crash(finding_id="f", kind="Command Injection", input_path=Path("x"),
+                  stack_trace="", signature="s", sink_location="a.js:1:1", reproduced=3)
+    result = fuse(Severity.HIGH, "command-injection", FindingStatus.CONFIRMED, [crash], 30)
+    assert result.confidence >= 0.9
+
+
+def test_fusion_not_confirmed_lowers_prior():
+    from proofhound.agents.triage import fuse
+    from proofhound.models import FindingStatus, Severity
+
+    result = fuse(Severity.HIGH, "command-injection", FindingStatus.NOT_CONFIRMED, [], 30)
+    assert result.confidence < 0.45
+
+
+def test_fusion_class_mismatch_is_medium():
+    from proofhound.agents.triage import fuse
+    from proofhound.models import Crash, FindingStatus, Severity
+
+    crash = Crash(finding_id="f", kind="Prototype Pollution", input_path=Path("x"),
+                  stack_trace="", signature="s", sink_location="a.js:1:1", reproduced=3)
+    result = fuse(Severity.HIGH, "command-injection", FindingStatus.CONFIRMED, [crash], 30)
+    assert 0.5 < result.confidence < 0.9

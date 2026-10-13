@@ -14,3 +14,4 @@ vendor/
 benchmark/cases/*/repo/
 benchmark/cases/*/pkg-*/
 benchmark/cases/*/.out/
+runs/

@@ -118,7 +118,8 @@ def _print_summary(report: RunReport) -> None:
         f = r.finding
         where = f"{f.file.as_posix()}:{f.line}"
         fn = f.function.name if f.function else "?"
-        console.print(f"\n[{r.status.value.upper()}] {f.rule_id}  {where}  {fn}()")
+        conf = f"  confidence={r.confidence:.2f}" if r.confidence is not None else ""
+        console.print(f"\n[{r.status.value.upper()}] {f.rule_id}  {where}  {fn}(){conf}")
         for c in r.crashes:
             console.print(f"  {c.kind} at {c.sink_location}  reproduced {c.reproduced}x")
             console.print(f"  input: {c.input_path}")
