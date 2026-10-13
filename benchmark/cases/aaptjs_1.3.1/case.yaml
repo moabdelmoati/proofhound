@@ -1,0 +1,14 @@
+id: aaptjs_1.3.1
+vuln_class: command-injection
+package: aaptjs
+version: 1.3.1
+fixed_version: null
+sink: index.js:18:3
+fix_commit: n/a
+exploit: command-injection/aaptjs_1.3.1/aaptjs.test.js
+commit: 69128d42f9455bccbba6fadb892df2940dfd08a4
+commit_mode: introduce
+split: eval
+ground_truth:
+  class: command-injection
+  sink: index.js:18:3
