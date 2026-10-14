@@ -6,7 +6,7 @@ budgets:
   max_tokens_per_run: 200000
 
 harness:
-  model: claude               # key in `models` below
+  model: codecraft-claude     # key in `models` below
   probe_time_s: 5             # short fuzz run used to check coverage growth
   small_model_repair_attempts: 2
   large_model_repair_attempts: 2
@@ -47,19 +47,19 @@ models:
     model: ""                 # fill in the model id you want to use
     base_url: https://generativelanguage.googleapis.com/v1beta/openai/
     api_key_env: GEMINI_API_KEY
-  # CodeCraft gateway: fill base_url and model ids from the CodeCraft dashboard/docs.
-  # provider: openai_compatible if the gateway speaks the OpenAI format, anthropic if it
-  # speaks the Anthropic Messages format.
-  codecraft-main:
+  # CodeCraft gateway (OpenAI-compatible). Key in .env as CODECRAFT_API_KEY.
+  codecraft-claude:           # smallest/cheapest Claude available on CodeCraft (no Haiku listed)
     provider: openai_compatible
-    model: ""
-    base_url: ""
+    model: claude-sonnet-5
+    base_url: https://codecraftapi.com/v1
     api_key_env: CODECRAFT_API_KEY
-  codecraft-dev:
+    max_tokens: 4000          # a harness is small; keep cost down
+  codecraft-opus:             # stronger Claude for hard harnesses / escalation
     provider: openai_compatible
-    model: ""
-    base_url: ""
+    model: claude-opus-5-5
+    base_url: https://codecraftapi.com/v1
     api_key_env: CODECRAFT_API_KEY
+    max_tokens: 4000
   local-small:                # our fine-tuned model served by vLLM/Ollama (Term 2 cascade)
     provider: openai_compatible
     model: ""

@@ -49,6 +49,8 @@ class HarnessAgent:
         source_path = target / finding.file
         if not source_path.is_file():
             return None
+        # Jazzer.js requires the corpus directory to exist before the probe run.
+        (out / "corpus").mkdir(parents=True, exist_ok=True)
         source = source_path.read_text(encoding="utf-8", errors="replace")
         lines = source.splitlines()
         function_source = "\n".join(lines[max(0, function.start_line - 1):function.end_line])
@@ -121,7 +123,7 @@ class HarnessAgent:
                                 if hits is not None else
                                 "No Jazzer.js coverage report was produced; check that the target loads."
                             )
-            except Exception as e:  # noqa: BLE001 - log generated output before surfacing infrastructure errors
+            except Exception as e:
                 failed_stage = "sandbox"
                 error = f"{type(e).__name__}: {e}"
                 sandbox_error = e
