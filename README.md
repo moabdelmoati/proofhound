@@ -5,6 +5,11 @@ fuzz harnesses; a coverage-guided fuzzer confirms the bug in a sandbox; triage f
 into one confidence score, produces a proof-of-vulnerability (PoV), and a patch is accepted only if
 re-fuzzing confirms the fix.
 
+**Research spine:** the project compares a **single agent** (Term 1) against a **multi-agent**
+system (Term 2) with the same model, tools, and infrastructure (RQ3). See
+[docs/proposal.md](docs/proposal.md) and the full [docs/architecture.md](docs/architecture.md)
+(Arabic: `docs/proposal.ar.md`, `docs/architecture.ar.md`).
+
 ## Layout
 
 | Path | Contents |
