@@ -2,8 +2,8 @@
 
 ## Agentic Vulnerability Discovery and Repair — *Stop Guessing, Start Proving Vulnerabilities*
 
-Graduation Project and Research Proposal — updated to reflect the Term 1 implementation and an
-expanded, 5-person scope.
+Graduation Project and Research Proposal. Updated to reflect the Term 1 implementation, a
+single-agent → multi-agent research spine, and an expanded, 5-person scope.
 
 ---
 
@@ -11,15 +11,19 @@ expanded, 5-person scope.
 
 Static analysis (SAST) finds vulnerability candidates quickly but reports many false positives,
 while fuzzing confirms real defects by execution but depends on hand-written harnesses. We build
-**ProofHound**, a multi-agent framework that connects the two: SAST findings on changed code guide
-a large language model (LLM) to write a fuzz harness, a coverage-guided fuzzer executes it in a
-sandbox, and a triage stage fuses both signals into one confidence score, generates a
-proof-of-vulnerability (PoV), and proposes a patch that is accepted only if re-fuzzing confirms the
-fix. Several agents run on our own small models, fine-tuned on Colab with QLoRA, working alongside
-a large model in a cascade: our models act first, execution checks the result, and the large model
-steps in only when needed. The system runs on every commit or merge request. It starts with
-JavaScript/TypeScript and adds Python. The project delivers a working tool, a reproducible
-benchmark, and an experimental study suitable for a research paper.
+**ProofHound**, a framework that connects the two: SAST findings on changed code guide a large
+language model (LLM) to write a fuzz harness, a coverage-guided fuzzer executes it in a sandbox, a
+triage stage fuses both signals into one confidence score and a proof-of-vulnerability (PoV), and
+the system then proposes a code fix that is accepted only if re-fuzzing confirms it is gone.
+
+The central research question is whether a **team of specialized agents** confirms and repairs more
+vulnerabilities, at comparable cost, than a **single general agent** with the same model and tools.
+We answer it across two terms: Term 1 delivers the shared infrastructure and a working
+**single-agent** system end to end; Term 2 adds the **multi-agent** system and a head-to-head
+comparison, plus our own small models (fine-tuned on Colab with QLoRA) in a cascade with a large
+model. The system runs on every commit or merge request, starts with JavaScript/TypeScript, and
+adds Python. It delivers a working tool, a self-hosted dashboard, a reproducible benchmark, and an
+experimental study suitable for a research paper.
 
 ## 2. Problem Statement
 
@@ -27,58 +31,91 @@ Developers often ignore SAST output because a large share of alerts are not real
 the standard way to confirm a defect, but writing the harness requires expertise and time. The
 JavaScript/npm ecosystem, where packages are widely reused, has little comparable LLM-fuzzing
 tooling. We ask: how can static and dynamic evidence be combined, automatically and per commit, so
-that reported vulnerabilities are confirmed, prioritized, and repaired with low false-positive cost?
+that reported vulnerabilities are confirmed, prioritized, and repaired with low false-positive cost
+— and does splitting the work across specialized agents beat a single agent?
 
-**Early evidence from our own benchmark.** On 11 real npm vulnerabilities (SecBench.js), our SAST
-rules alone flag the true sink in **11/11** cases but also raise **58** candidate findings inside
-the changed functions — a false-positive load that motivates execution-based confirmation
-directly (see §8).
+**Early evidence from our own benchmark.** On **31** real npm vulnerabilities (built from
+SecBench.js), our SAST rules alone flag the true sink in **30/31** cases but also raise **244**
+candidate findings inside the changed functions (about **7.9 false positives per case**). That
+false-positive load is the direct motivation for confirming findings by execution before showing
+them to a developer.
 
-## 3. Objectives
+## 3. The research spine: single agent vs. multi-agent
 
-1. A per-commit pipeline that analyzes only changed functions, confirms findings by fuzzing, and
-   reports a reproducing input.
-2. SAST-guided LLM harness generation with an automatic repair loop for failed harnesses.
-3. A fused SAST + fuzzing confidence score, a PoV, and a CVSS estimate per confirmed finding.
-4. Patches and regression tests accepted only if the PoV no longer triggers and tests still pass.
-5. Evaluation against SAST-only, fuzzing-only, and single-agent baselines on real npm bugs.
-6. Generalization to Python as a second fuzzed language.
-7. Our own fine-tuned agent models (Harness, Patcher, Triage, Analyzer filter) in a cascade with a
-   large model that steps in only when they fail or are uncertain.
+- **Single agent (Term 1).** One LLM is given the changed code, the SAST finding, and a set of
+  tools (read file, run SAST, write a harness, run the fuzzer, propose a fix). It decides the whole
+  flow itself in one loop.
+- **Multi-agent (Term 2).** The same work is split across specialized agents — Analyzer, Scheduler,
+  Harness, Fuzzer, Triage, Patcher — each with a fixed role, prompt, and tools, coordinated by an
+  orchestrator, with our own small models in a cascade under a large model.
 
-## 4. System
+Both share the same infrastructure (sandbox, SAST, fuzzer, benchmark, reports), so the comparison
+isolates the effect of the agent architecture itself. This is **RQ3**, promoted to the backbone of
+the project.
 
-A pipeline of cooperating agents controlled by an orchestrator that keeps state, retries, and
-per-run time and token budgets. All generated code runs in Docker containers without network access
-and with CPU, memory, and process limits.
+## 4. Objectives
+
+1. Shared per-commit infrastructure: analyze only changed functions, confirm findings by fuzzing in
+   a sandbox, and report a reproducing input. *(Term 1)*
+2. A working single-agent system end to end on JS/TS. *(Term 1)*
+3. SAST-guided harness generation with an automatic repair loop. *(both; single-loop in Term 1)*
+4. A fused SAST + fuzzing confidence score and a PoV per confirmed finding. *(Term 1 score; full PoV
+   in Term 2)*
+5. Automatic code repair: propose a fix, accepted only if the PoV no longer triggers and existing
+   tests still pass. *(Term 2)*
+6. The multi-agent system and a rigorous single-agent vs. multi-agent comparison (RQ3). *(Term 2)*
+7. Our own fine-tuned models in a cascade with a large model that steps in only on failure or
+   uncertainty. *(pilot in Term 1, full in Term 2)*
+8. A self-hosted dashboard that shows, per scanned project, every confirmed vulnerability and
+   whether it was fixed — with all data staying inside the organization. *(Term 2)*
+9. Generalization to Python as a second fuzzed language. *(Term 2)*
+
+## 5. System
+
+A pipeline of components controlled by an orchestrator that keeps state, retries, and per-run time
+and token budgets. All generated code runs in Docker containers without network access and with
+CPU, memory, and process limits. The single agent and the multi-agent system are two front-ends
+over the same components.
 
 | Component | Role |
 |---|---|
 | **Analyzer** | Extracts changed functions from the diff and runs SAST on them (source, sink, severity). |
 | **Scheduler** | Assigns fuzzing time by severity and reuses the stored corpus (rule-based). |
 | **Harness** | Writes a harness guided by the finding; feeds compile/runtime errors back for repair. |
-| **Fuzzer** | Runs the coverage-guided fuzzer in the sandbox, monitors coverage and crashes, updates the corpus. |
+| **Fuzzer** | Runs the coverage-guided fuzzer in the sandbox; monitors coverage and crashes; updates the corpus. |
 | **Triage** | Deduplicates crashes, fuses SAST and fuzzing evidence into one confidence, generates the PoV, estimates CVSS. |
-| **Patcher** | Proposes a patch and regression test; validates by re-running the PoV and the test suite. |
-| **Orchestrator** | Coordinates agents, enforces budgets, stores results, emits reports (MR comment, SARIF, JSON). |
+| **Patcher** | Proposes a code fix and a regression test; validates by re-running the PoV and the test suite. |
+| **Orchestrator** | Coordinates the flow, enforces budgets, stores results, emits reports (dashboard, SARIF, JSON, MR comment). |
 
-SAST is accessed through an interface; the initial engine is Semgrep, with our own engine as a
-pluggable alternative. A per-language adapter isolates everything language-specific, so a new
-language needs one adapter and no change to the agents.
+SAST is accessed through an interface (Semgrep first, our own engine pluggable). A per-language
+adapter isolates everything language-specific, so a new language needs one adapter and no change to
+the components.
 
-## 5. Cascade: our models alongside a large model
+## 6. New capabilities requested for this scope
 
-Our small models are not meant to replace the large model; they work in a cascade: our model acts
-first, the result is checked, and the large model steps in only when the check fails or our model is
-uncertain. We use one open code base model (1.5B–7B, chosen in the literature review) with a
-separate LoRA adapter per agent, trained with QLoRA on Colab, so several agents share one base model
-at low cost.
+- **Easier scanning.** One command (`proofhound scan`), a GitHub Action that runs on every pull
+  request, and a pre-commit/CI entry point, so a team adopts ProofHound without wiring anything by
+  hand. Results appear inline in the code-scanning view via SARIF.
+- **Automatic code repair.** After a finding is confirmed by a reproduced crash, the Patcher
+  proposes a minimal edit to the vulnerable function plus a regression test. The edit is accepted
+  only if, after applying it, the PoV no longer triggers and the project's existing tests still
+  pass — execution is the judge, never the model's say-so.
+- **Self-hosted dashboard.** A web dashboard, deployed inside the organization, lists each scanned
+  project (web apps and services) with its confirmed vulnerabilities, their severity and PoV, and
+  which ones have been fixed. **Privacy by design:** the dashboard and the whole pipeline run on the
+  organization's own machines; source code, findings, and PoVs never leave its network, and the
+  only external call is the optional large-model API (which can be swapped for a self-hosted model).
 
-Where a result can be verified by running it (Harness, Patcher), **execution is the judge** rather
-than another model. The large model reviews only decisions with no execution check (Triage, Analyzer
-filter) and acts as the teacher that produces training data via verified distillation.
+## 7. Cascade: our models alongside a large model
 
-## 6. Data
+Our small models work in a cascade: our model acts first, the result is checked, and the large model
+steps in only when the check fails or our model is uncertain. We use one open code base model
+(1.5B–7B) with a separate LoRA adapter per agent, trained with QLoRA on Colab, so several agents
+share one base model at low cost. Where a result can be verified by running it (Harness, Patcher),
+execution is the judge; the large model reviews only decisions with no execution check (Triage,
+Analyzer filter) and acts as the teacher that produces training data via verified distillation.
+
+## 8. Data
 
 Evaluation and training data are kept strictly separate: a package used in the benchmark never
 appears in training data.
@@ -88,138 +125,107 @@ appears in training data.
 | JS/TS benchmark | SecBench.js, extended with recent npm advisories from OSV / GitHub Advisory DB |
 | Python benchmark | PyPA advisory database and OSV |
 | Patcher training | CVEfixes and upstream fix commits |
-| Harness training | Functions from popular npm packages; harnesses from OSS-Fuzz as seed examples (verified distillation) |
+| Harness training | Functions from popular npm packages; OSS-Fuzz harnesses as seeds (verified distillation) |
 | Triage / Analyzer training | Labeled automatically by our own pipeline runs |
 | Demo | OWASP NodeGoat and Juice Shop, plus injected cases |
 
-## 7. Supported languages
+## 9. Supported languages
 
 | Language | Fuzzer | Status |
 |---|---|---|
 | JavaScript / TypeScript | Jazzer.js | Core, fully evaluated |
-| Python | Atheris | Second language; analysis side implemented, fuzzing in Term 2 |
+| Python | Atheris | Analysis side implemented; fuzzing in Term 2 |
 | Go (optional) | `go test -fuzz` | If time allows |
 | C / C++ | libFuzzer / AFL++ | Future work |
 
-## 8. Research questions
+## 10. Research questions
 
 - **RQ1** Does SAST-guided harness generation raise first-attempt harness success and detection
   rate vs. unguided generation?
 - **RQ2** Does fusing SAST and fuzzing evidence reduce false positives vs. either alone?
-- **RQ3** Does the multi-agent design outperform a single agent with the same model and tools, at
-  comparable cost?
+- **RQ3 (spine)** Does the multi-agent design outperform a single agent with the same model and
+  tools, at comparable cost?
 - **RQ4** What does each module (scheduling, repair loop, fusion, patch validation) contribute?
-- **RQ5** Do results generalize when Python is added, with minimal change to the agents?
+- **RQ5** Do results generalize when Python is added, with minimal change to the components?
 - **RQ6** In the cascade, what share of work do our models complete without the large model, how
   much cost and time does that save, and does detection stay comparable?
 
-Metrics: harness success on first attempt and after repair, target-reachability, detection rate,
-false-positive rate, fused-score precision, patch correctness, share of work done by our models,
+Metrics: harness success (first attempt and after repair), target-reachability, detection rate,
+false-positive rate, fused-score precision, repair correctness, share of work done by our models,
 cost saved, and time and tokens per commit. All prompts, model versions, and seeds are logged so
 experiments can be repeated.
 
-## 9. Implementation status (Term 1)
+## 11. Term 1 — detailed objectives and status
+
+**Goal:** a working single-agent vulnerability-confirmation tool on JS/TS, the shared
+infrastructure it runs on, a reproducible benchmark, and the first numbers.
 
 Implemented and tested end to end on real npm vulnerabilities:
 
 - Docker fuzzing sandbox (Jazzer.js), no network, resource-limited.
-- Diff parser and tree-sitter changed-function extraction for JS/TS **and Python**.
-- Analyzer with Semgrep taint rules for **five** vulnerability classes (command injection, path
+- Diff parser and tree-sitter changed-function extraction for JS/TS and Python.
+- Analyzer with Semgrep taint rules for five vulnerability classes (command injection, path
   traversal, code injection, prototype pollution, ReDoS).
-- Fuzzer agent with 3× crash reproduction (only reproducible, class-matching crashes count).
-- Orchestrator, CLI (`analyze`, `scan`, `benchmark-sast`), JSON and **SARIF** reports.
-- **GitHub Action** that runs ProofHound on pull requests and uploads results to code scanning.
-- **Triage fusion score** (rule-based SAST + fuzzing → confidence), the RQ2 core.
-- Benchmark builder turning SecBench.js cases into two-commit repos with ground truth; an initial
+- Fuzzer with 3× crash reproduction (only reproducible, class-matching crashes count).
+- Orchestrator, CLI (`analyze`, `scan`, `benchmark-sast`), JSON and SARIF reports.
+- GitHub Action that runs ProofHound on pull requests and uploads results to code scanning.
+- Triage fusion score (rule-based SAST + fuzzing → confidence), the RQ2 core.
+- Benchmark builder turning SecBench.js cases into two-commit repos with ground truth; a 31-case
   benchmark; training-data logging of every harness attempt; a pilot QLoRA notebook.
 
-The Harness Agent (LLM prompt and repair loop) is authored by the team.
-
-## 10. Expanded scope for a 5-person team
-
-Pulled earlier from the original Term 2 plan and added on top:
-
-- SARIF + GitHub Action per-commit integration (done).
-- Python analysis side via the adapter layer (done); Python fuzzing with Atheris (Term 2).
-- Triage fusion score (done); full triage with PoV + CVSS (Term 2).
-- Five vulnerability classes instead of two.
-- Larger benchmark (target 40–50 cases) and a dedicated false-positive study.
-- Optional: a second SAST engine (e.g. CodeQL) for comparison, and a results dashboard.
-
-## 11. Team roles
-
-| Member | Term 1 | Term 2 |
-|---|---|---|
-| 1 — Harness / LLM | Harness Agent and repair loop; run on the benchmark | Cascade and large-model escalation; RQ1/RQ3 |
-| 2 — SAST / Analyzer | More Semgrep rule classes; false-positive analysis | Python analysis; optional CodeQL comparison |
-| 3 — Fuzzing / Sandbox | Fuzzer, sandbox, benchmark construction | Full triage (PoV + CVSS); continuous fuzzing |
-| 4 — Infra / Integration | SARIF, CLI, CI/GitHub Action, dashboard | Patcher; Python fuzzing (Atheris); Go if time |
-| 5 — ML / Research | Literature review; base-model selection; training data | Train LoRA adapters; RQ6; paper writing |
+Remaining for Term 1: the single-agent LLM loop and its harness step (team-authored), the
+single-agent runs on the benchmark, and the first RQ1/RQ2 numbers plus the pilot model.
 
 ## 12. Term 2 plan (weeks 15–28)
 
-Term 1 produced the full static side, the fuzzing side, the orchestrator, the fused confidence
-score, CI integration, and the benchmark harness. Term 2 completes the dynamic intelligence, the
-cascade of our own models, and the research evaluation.
+Term 2 completes the dynamic intelligence, builds the multi-agent system, runs the single-vs-multi
+comparison, and adds the dashboard and auto-repair.
 
-### 12.1 Full triage — PoV and CVSS
-The Term 1 triage already fuses SAST and fuzzing into one confidence. Term 2 adds, per confirmed
-finding: a standalone proof-of-vulnerability script that re-triggers the crash outside the fuzzer,
-LLM-assisted crash classification, and a CVSS v3.1 severity estimate. The confidence score stays
-rule-based and auditable; the LLM only fills the explanatory and severity fields.
+- **Full triage:** a standalone PoV script, LLM crash classification, and CVSS v3.1 — the
+  confidence score stays rule-based and auditable.
+- **Patcher (auto-repair):** minimal fix + regression test, accepted only on re-fuzzing + tests.
+- **Multi-agent system and RQ3 comparison:** the specialized agents and orchestrator vs. the
+  single agent on the same cases and budgets.
+- **Cascade and our own models:** LoRA adapters per agent trained on verified distillation data;
+  large-model escalation only on failure or low confidence (RQ6).
+- **Continuous fuzzing and scheduling:** the corpus persists across commits.
+- **Self-hosted dashboard:** per-project view of confirmed and fixed vulnerabilities, data kept in
+  the organization.
+- **Python fuzzing (Atheris)** and the Python benchmark (RQ5); optional CodeQL comparison and Go.
+- **Research evaluation and paper:** all configurations and ablations for RQ1–RQ6, threats to
+  validity, and a paper draft.
 
-### 12.2 Patcher
-A new agent proposes a minimal patch and a regression test for each confirmed finding. A patch is
-accepted only if, after applying it, the PoV no longer triggers the crash and the package's
-existing test suite still passes — execution is the judge, exactly as for the Harness Agent.
-
-### 12.3 The full cascade and our own models
-We fine-tune a LoRA adapter per agent (Harness, Patcher, Triage, Analyzer filter) on one shared
-open code base model with QLoRA on Colab, using the verified distillation data that Term 1 logs
-from every pipeline run. Each adapter is wired into the cascade: our model first, execution or
-large-model check second, large-model escalation only on failure or low confidence. RQ6 measures
-the share of work our models complete alone and the cost and time saved.
-
-### 12.4 Continuous fuzzing and scheduling
-The corpus persists across commits so later runs start from earlier coverage, and the Scheduler
-agent assigns fuzzing time by severity across the findings of a commit.
-
-### 12.5 Second fuzzed language (Python) and optional breadth
-Term 1 implemented Python on the analysis side through the adapter layer. Term 2 completes Python
-fuzzing with Atheris and extends the benchmark with PyPA/OSV Python advisories (RQ5). If time
-allows: a second SAST engine (CodeQL) for comparison, a results dashboard, and Go via the built-in
-`go test -fuzz`.
-
-### 12.6 Research evaluation and paper
-All configurations and ablations for RQ1–RQ6 on the full benchmark: SAST-only vs. fuzzing-only vs.
-ProofHound; guided vs. unguided harnesses; multi-agent vs. single-agent; the cascade vs. a
-large-model-only pipeline; and the per-module ablation. Threats to validity (benchmark size and
-noise, LLM non-determinism, fuzzing-time limits) are addressed with repeated runs, fixed budgets,
-and logged seeds. The target outcome is a paper for a software-security or software-engineering
-venue, selected with the supervisor.
-
-### 12.7 Timeline
+### Timeline
 
 | Phase | Weeks | Work | Deliverable |
 |---|---|---|---|
-| T2-A Intelligence | 15–19 | Scheduler; full triage (PoV + CVSS); Patcher with regression tests; continuous fuzzing; scale up distillation data | Full multi-agent pipeline |
-| T2-A2 Model training | 17–21 | Train Harness, Patcher, Triage adapters on Colab; Analyzer filter if time; wire the cascade with large-model escalation | Our models in the cascade |
-| T2-B Languages & breadth | 20–22 | Python fuzzing (Atheris); Go if time; optional CodeQL comparison and dashboard | Second fuzzed language |
-| T2-C Evaluation | 23–26 | Full benchmark; all configurations and ablations; cascade vs. large-model-only; analysis | Results and figures |
+| T2-A Intelligence | 15–19 | Scheduler; full triage (PoV + CVSS); Patcher with regression tests; continuous fuzzing | Dynamic intelligence complete |
+| T2-A2 Multi-agent & models | 17–21 | Specialized agents + orchestrator; train adapters on Colab; wire the cascade | Multi-agent system in the cascade |
+| T2-B Dashboard & languages | 20–23 | Self-hosted dashboard; Python fuzzing (Atheris); Go/CodeQL if time | Dashboard; second fuzzed language |
+| T2-C Evaluation | 23–26 | Full benchmark; single vs. multi (RQ3); all ablations; cascade vs. large-model-only | Results and figures |
 | T2-D Writing | 27–28 | Paper, final report, defense demo | Paper draft; final thesis |
 
-If time is short, Go and the dashboard are dropped first, then the Analyzer filter, then the
-optional second SAST engine; the Harness model, the core pipeline, the benchmark, and the
-evaluation are protected.
+If time is short, Go and CodeQL are dropped first, then the Analyzer filter; the single/multi
+comparison, the Patcher, the benchmark, and the evaluation are protected.
 
-## 13. Deliverables and risks
+## 13. Team roles (5 members)
 
-**Deliverables:** an open-source tool (CLI and CI integration), our fine-tuned agent models and
-their training datasets, a benchmark with ground truth, a research-paper draft, and the graduation
-report.
+| Member | Term 1 | Term 2 |
+|---|---|---|
+| 1 — Agent / LLM | Single-agent loop and harness step; run on the benchmark | Multi-agent orchestration; cascade and escalation; RQ1/RQ3 |
+| 2 — SAST / Analyzer | More Semgrep rule classes; false-positive analysis | Python analysis; optional CodeQL comparison |
+| 3 — Fuzzing / Sandbox | Fuzzer, sandbox, benchmark construction | Full triage (PoV + CVSS); continuous fuzzing |
+| 4 — Infra / Integration | SARIF, CLI, CI/GitHub Action | Patcher (auto-repair); self-hosted dashboard; Python fuzzing |
+| 5 — ML / Research | Literature review; base-model selection; training data | Train LoRA adapters; RQ6; paper writing |
 
-**Risks and mitigations:** harness generation is the hardest part — start with simple pure
-functions and widen; fuzzing is slow — fixed time budgets and corpus reuse; our models may handle
-little of the work or Colab may limit training — the large model covers every failure, so results
-stay correct, and we report the share honestly; scope growth — a fixed protected core with
+## 14. Deliverables and risks
+
+**Deliverables:** an open-source tool (CLI and CI integration), a self-hosted dashboard, our
+fine-tuned agent models and their training datasets, a benchmark with ground truth, a research-paper
+draft, and the graduation report.
+
+**Risks and mitigations:** harness and repair generation are the hardest parts — start with simple
+pure functions and widen; fuzzing is slow — fixed time budgets and corpus reuse; our models may
+handle little of the work or Colab may limit training — the large model covers every failure so
+results stay correct, and we report the share honestly; scope growth — a fixed protected core with
 extensions ordered by priority.
