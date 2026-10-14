@@ -9,7 +9,6 @@ the model is a separate file (`prompts/single_agent/system.md`) authored by the 
 how the Harness Agent's prompt is kept out of the code.
 """
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 

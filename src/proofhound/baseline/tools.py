@@ -9,7 +9,6 @@ Each tool takes JSON-serializable arguments and returns a JSON-serializable resu
 exposed to any provider's tool/function-calling interface unchanged.
 """
 
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
