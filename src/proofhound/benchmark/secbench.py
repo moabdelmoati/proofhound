@@ -116,7 +116,7 @@ def build_case(case: SecBenchCase, dest: Path, sandbox: DockerSandbox | None = N
     if fixed is not None:
         diff = subprocess.run(
             ["git", "diff", "--no-index", "--numstat", str(fixed), str(vulnerable)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, check=False,  # git diff --no-index returns 1 on diff
         ).stdout
         changed = sum(
             int(a) + int(d) for a, d, *_ in (line.split("\t") for line in diff.splitlines())

@@ -6,7 +6,7 @@ training data (no leakage between evaluation and training).
 
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -29,7 +29,7 @@ class AttemptRecord:
     failed_stage: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class AttemptLogger:

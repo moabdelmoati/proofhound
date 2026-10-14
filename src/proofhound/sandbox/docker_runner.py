@@ -61,13 +61,14 @@ class DockerSandbox:
         try:
             proc = subprocess.run(
                 args, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                check=False,
                 timeout=timeout_s,
             )
             return SandboxResult(
                 proc.returncode, proc.stdout + proc.stderr, False, time.monotonic() - start
             )
         except subprocess.TimeoutExpired as e:
-            subprocess.run(["docker", "kill", name], capture_output=True)
+            subprocess.run(["docker", "kill", name], capture_output=True, check=False)
             output = _as_text(e.stdout) + _as_text(e.stderr)
             return SandboxResult(-1, output, True, time.monotonic() - start)
 

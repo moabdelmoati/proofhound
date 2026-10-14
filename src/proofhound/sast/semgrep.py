@@ -34,6 +34,7 @@ class SemgrepEngine(SastEngine):
                 *(f.as_posix() for f in files),
             ],
             capture_output=True, text=True, encoding="utf-8", timeout=self.timeout_s,
+            check=False,
         )
         if not proc.stdout.strip():
             raise RuntimeError(f"semgrep produced no output:\n{proc.stderr[-2000:]}")

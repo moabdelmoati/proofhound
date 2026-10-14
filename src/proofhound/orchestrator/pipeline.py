@@ -7,7 +7,7 @@ leaves a working harness file in `out`. Its implementation is not part of this m
 """
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -54,7 +54,7 @@ class Pipeline:
             tool_version=__version__,
             repo=str(repo),
             commit=commit,
-            started_at=datetime.now(timezone.utc).isoformat(),
+            started_at=datetime.now(UTC).isoformat(),
             models={"harness": self.settings.harness.model},
         )
 
@@ -86,7 +86,7 @@ class Pipeline:
         tokens_before = self.harness_step.tokens_used
         try:
             harness = self.harness_step.produce(finding, repo, out)
-        except Exception as e:  # noqa: BLE001 - one failing finding must not stop the run
+        except Exception as e:
             tokens = self.harness_step.tokens_used - tokens_before
             return FindingResult(
                 finding=finding, status=FindingStatus.ERROR, detail=f"harness step: {e}",
@@ -102,7 +102,7 @@ class Pipeline:
             outcome = self.fuzzer.run(
                 FuzzJob(finding, repo, out, self.settings.budgets.fuzz_time_per_target_s)
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return FindingResult(
                 finding=finding, status=FindingStatus.ERROR, harness=harness,
                 tokens_used=tokens, detail=f"fuzzer: {e}", duration_s=time.monotonic() - start,

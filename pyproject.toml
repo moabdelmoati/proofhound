@@ -36,4 +36,21 @@ packages = ["src/proofhound"]
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "PL", "RUF"]
+ignore = [
+  "PLR2004",  # magic value in comparison — fine here
+  "PLR0913", "PLR0917",  # many (positional) args — agents/tools take explicit deps by design
+  "PLR0911", "PLR0915",  # many returns/statements — validation ladders are naturally branchy
+  "PLC0415",  # import not at top — we lazy-import optional deps and in tests on purpose
+  "UP042",  # str+Enum is intentional (stable, widely used); not switching to StrEnum
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Typer uses function calls (typer.Option/Argument) in defaults by design.
+"src/proofhound/cli.py" = ["B008"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Option", "typer.Argument"]

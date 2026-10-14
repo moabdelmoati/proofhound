@@ -40,7 +40,7 @@ def score_sast(analyzer: AnalyzerAgent, case_dir: Path) -> SastCaseResult:
     base = SastCaseResult(m["id"], m["vuln_class"], m["commit_mode"], m["sink"], 0, 0, False, 0)
     try:
         analysis = analyzer.run(AnalyzeJob(case_dir / "repo", m["commit"]))
-    except Exception as e:  # noqa: BLE001 - report and continue with the next case
+    except Exception as e:
         base.error = f"{type(e).__name__}: {str(e)[:200]}"
         return base
     hits = [

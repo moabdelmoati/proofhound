@@ -53,7 +53,10 @@ def test_harness_agent_repairs_and_discards_stale_coverage(tmp_path):
     out = tmp_path / "out"
     out.mkdir()
     logger = AttemptLogger(tmp_path / "attempts.jsonl")
-    client = FakeClient(replies=["```javascript\nmodule.exports.fuzz = () => {};\n```", "module.exports.fuzz = () => {};" ])
+    client = FakeClient(replies=[
+        "```javascript\nmodule.exports.fuzz = () => {};\n```",
+        "module.exports.fuzz = () => {};",
+    ])
     sandbox = FakeSandbox([0, 4])
     agent = HarnessAgent(
         client, "fake-model", HitAdapter(), sandbox,

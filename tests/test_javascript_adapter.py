@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from proofhound.adapters.base import innermost
-from proofhound.adapters.javascript import JavaScriptAdapter, first_target_frame, parse_jazzer_output
+from proofhound.adapters.javascript import (
+    JavaScriptAdapter,
+    first_target_frame,
+    parse_jazzer_output,
+)
 from proofhound.sast.semgrep import to_finding
 
 SOURCE = b"""\

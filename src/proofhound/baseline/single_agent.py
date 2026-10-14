@@ -11,6 +11,7 @@ how the Harness Agent's prompt is kept out of the code.
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import ClassVar
 
 from proofhound.baseline.tools import TOOL_SPECS, AgentTools
 from proofhound.llm.client import LLMClient
@@ -41,19 +42,16 @@ class SingleAgent:
         self.budget = budget
         self.max_steps = max_steps
 
+    _TOOL_NAMES: ClassVar[set[str]] = {
+        "git_diff", "read_file", "run_sast", "write_harness", "run_fuzzer",
+    }
+
     def _dispatch(self, name: str, args: dict) -> object:
-        method = {
-            "git_diff": lambda: self.tools.git_diff(),
-            "read_file": lambda: self.tools.read_file(**args),
-            "run_sast": lambda: self.tools.run_sast(),
-            "write_harness": lambda: self.tools.write_harness(**args),
-            "run_fuzzer": lambda: self.tools.run_fuzzer(**args),
-        }.get(name)
-        if method is None:
+        if name not in self._TOOL_NAMES:
             return {"error": f"unknown tool {name}"}
         try:
-            return method()
-        except Exception as e:  # noqa: BLE001 - tool errors are fed back to the model
+            return getattr(self.tools, name)(**args)
+        except Exception as e:  # tool errors are fed back to the model, not raised
             return {"error": f"{type(e).__name__}: {e}"}
 
     def run(self) -> SingleAgentResult:
@@ -72,4 +70,4 @@ def load_system_prompt(path: Path = Path("prompts/single_agent/system.md")) -> s
     return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
-__all__ = ["SingleAgent", "SingleAgentResult", "AgentTools", "TOOL_SPECS", "load_system_prompt"]
+__all__ = ["TOOL_SPECS", "AgentTools", "SingleAgent", "SingleAgentResult", "load_system_prompt"]
