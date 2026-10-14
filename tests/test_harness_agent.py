@@ -77,6 +77,34 @@ def test_harness_agent_repairs_and_discards_stale_coverage(tmp_path):
     assert (out / "harness.js").read_text(encoding="utf-8").startswith("module.exports")
 
 
+def test_harness_agent_creates_corpus_dir_before_probe(tmp_path):
+    # Regression: Jazzer.js requires the corpus directory to exist, so produce() must create it
+    # before the probe fuzz run. Without it every probe failed with "required directory does not
+    # exist" and no harness ever validated.
+    target = tmp_path / "repo"
+    (target / "lib").mkdir(parents=True)
+    (target / "lib/target.js").write_text("module.exports.run = () => {};", encoding="utf-8")
+    out = tmp_path / "out"
+    out.mkdir()
+
+    corpus_present_at_probe: list[bool] = []
+
+    class ProbeSpySandbox(FakeSandbox):
+        def run(self, command, target, out, timeout_s, image=None, network=False):
+            if "corpus" in " ".join(command) and command[:2] != ["node", "--check"]:
+                corpus_present_at_probe.append((out / "corpus").is_dir())
+            return super().run(command, target, out, timeout_s, image, network)
+
+    agent = HarnessAgent(
+        FakeClient(replies=["module.exports.fuzz = () => {};"]), "fake-model", HitAdapter(),
+        ProbeSpySandbox([4]),
+        HarnessSettings(probe_time_s=1, large_model_repair_attempts=0),
+        AttemptLogger(tmp_path / "attempts.jsonl"),
+    )
+    agent.produce(_finding(), target, out)
+    assert corpus_present_at_probe and all(corpus_present_at_probe)
+
+
 def test_harness_agent_rejects_probe_timeout_and_logs_attempt(tmp_path):
     target = tmp_path / "repo"
     (target / "lib").mkdir(parents=True)
