@@ -98,8 +98,14 @@ def _replace_tree(repo: Path, source: Path) -> None:
     shutil.copytree(source, repo, dirs_exist_ok=True)
 
 
-def build_case(case: SecBenchCase, dest: Path, sandbox: DockerSandbox | None = None) -> dict:
-    """Create `dest/repo` (two commits, dependencies installed) and `dest/case.yaml`."""
+def build_case(
+    case: SecBenchCase, dest: Path, sandbox: DockerSandbox | None = None, split: str = "eval"
+) -> dict:
+    """Create `dest/repo` (two commits, dependencies installed) and `dest/case.yaml`.
+
+    `split` tags the case: "eval" for the benchmark, "train" for distillation data generation
+    (a package must appear in only one split — never both — to avoid leakage).
+    """
     sandbox = sandbox or DockerSandbox(SandboxSettings())
     shutil.rmtree(dest, ignore_errors=True)
     dest.mkdir(parents=True)
@@ -154,7 +160,7 @@ def build_case(case: SecBenchCase, dest: Path, sandbox: DockerSandbox | None = N
         **asdict(case),
         "commit": commit,
         "commit_mode": mode,
-        "split": "eval",
+        "split": split,
         "ground_truth": {"class": case.vuln_class, "sink": case.sink},
     }
     (dest / "case.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")

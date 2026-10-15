@@ -15,3 +15,5 @@ benchmark/cases/*/repo/
 benchmark/cases/*/pkg-*/
 benchmark/cases/*/.out/
 runs/
+training/cases/*/repo/
+training/cases/*/pkg-*/
