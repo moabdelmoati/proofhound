@@ -17,3 +17,4 @@ benchmark/cases/*/.out/
 runs/
 training/cases/*/repo/
 training/cases/*/pkg-*/
+models/
