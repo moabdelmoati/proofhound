@@ -60,7 +60,9 @@ models:
     base_url: https://codecraftapi.com/v1
     api_key_env: CODECRAFT_API_KEY
     max_tokens: 4000
-  local-small:                # our fine-tuned model served by vLLM/Ollama (Term 2 cascade)
+  local-harness:              # our fine-tuned Qwen2.5-Coder-1.5B + LoRA, via training/serve_local.py
     provider: openai_compatible
-    model: ""
-    base_url: http://localhost:8000/v1
+    model: harness
+    base_url: http://127.0.0.1:8000/v1
+    max_tokens: 2048
+    temperature: 0.0

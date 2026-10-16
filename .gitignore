@@ -17,4 +17,5 @@ benchmark/cases/*/.out/
 runs/
 training/cases/*/repo/
 training/cases/*/pkg-*/
-models/
+models/*.zip
+models/harness-adapter/
