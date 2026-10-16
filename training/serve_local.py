@@ -37,6 +37,28 @@ def _load(adapter: str, base: str | None, device: str):
     print("model ready", flush=True)
 
 
+def _trim(text: str) -> str:
+    for marker in ("<|fim_middle|>", "<|fim_prefix|>", "<|fim_suffix|>", "<|endoftext|>"):
+        text = text.split(marker, maxsplit=1)[0]
+    first = text.find("module.exports.fuzz")
+    if first == -1:
+        return text.strip()
+    depth, seen = 0, False
+    end = len(text)
+    for i, ch in enumerate(text[first:], start=first):
+        if ch == "{":
+            depth += 1
+            seen = True
+        elif ch == "}":
+            depth -= 1
+            if seen and depth == 0:
+                end = i + 1
+                if end < len(text) and text[end] == ";":
+                    end += 1
+                break
+    return text[:end].strip()
+
+
 def _generate(messages: list[dict], max_tokens: int, temperature: float) -> str:
     import torch
 
@@ -48,7 +70,8 @@ def _generate(messages: list[dict], max_tokens: int, temperature: float) -> str:
             **inputs, max_new_tokens=max_tokens, do_sample=temperature > 0,
             temperature=max(temperature, 1e-5), pad_token_id=tok.eos_token_id,
         )
-    return tok.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+    text = tok.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+    return _trim(text)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -60,13 +83,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def do_GET(self):  # noqa: N802
+    def do_GET(self):
         if self.path.rstrip("/").endswith("/models"):
             self._send(200, {"object": "list", "data": [{"id": _STATE["name"], "object": "model"}]})
         else:
             self._send(404, {"error": "not found"})
 
-    def do_POST(self):  # noqa: N802
+    def do_POST(self):
         if not self.path.rstrip("/").endswith("/chat/completions"):
             self._send(404, {"error": "not found"})
             return

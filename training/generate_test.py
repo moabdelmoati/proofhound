@@ -16,6 +16,34 @@ PROMPT = (
 )
 
 
+def trim_harness(text: str) -> str:
+    """Keep one harness: cut repetitions and FIM leakage after module.exports.fuzz closes."""
+    # Common special tokens that leak into fine-tuned small models with limited data.
+    for marker in ("<|fim_middle|>", "<|fim_prefix|>", "<|fim_suffix|>", "<|endoftext|>"):
+        text = text.split(marker, maxsplit=1)[0]
+    # Keep only up to the end of the first top-level module.exports.fuzz block.
+    marker = "module.exports.fuzz"
+    first = text.find(marker)
+    if first == -1:
+        return text.strip()
+    depth = 0
+    seen_open = False
+    end = len(text)
+    for i, ch in enumerate(text[first:], start=first):
+        if ch == "{":
+            depth += 1
+            seen_open = True
+        elif ch == "}":
+            depth -= 1
+            if seen_open and depth == 0:
+                end = i + 1
+                # include a trailing semicolon if the model emitted one
+                if end < len(text) and text[end] == ";":
+                    end += 1
+                break
+    return text[:end].strip()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--adapter", default="models/harness-adapter")
@@ -44,7 +72,7 @@ def main() -> None:
                              pad_token_id=tok.eos_token_id)
     text = tok.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
     print("=" * 60)
-    print(text)
+    print(trim_harness(text))
     print("=" * 60)
 
 

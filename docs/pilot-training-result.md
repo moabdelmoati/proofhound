@@ -47,10 +47,15 @@ module.exports.fuzz = function(data) {
 Structurally correct: FDP import, correct `require`, `module.exports.fuzz` with the right
 signature, input built from the provider. This is the shape the OSS-Fuzz seed taught the model.
 
-Known rough edges (small-data pilot, not production): the model sometimes repeats the function
-or emits a `<|fim_middle|>` marker. Both are mitigated by (a) early-stopping on `module.exports`
-or `}` at the top level, (b) more training data (the distillation stream from the pipeline's own
-runs), or (c) a larger base model.
+**Trimming layer.** The 1.5 B model trained on 28 examples occasionally repeated the function or
+emitted a `<|fim_middle|>` marker; a small post-processor (`training/serve_local.py :: _trim`,
+`training/generate_test.py :: trim_harness`, five regression tests in
+`tests/test_trim.py`) cuts both cleanly. Server output is now one clean harness per request.
+
+**End-to-end verified.** `training/serve_local.py` runs an OpenAI-compatible endpoint on
+`127.0.0.1:8000/v1` loading the base model + adapter; ProofHound's existing `openai_compatible`
+client talks to it exactly like any API, so swapping between the CodeCraft API and this local
+model is a config change (`harness.model: local-harness` in `configs/default.yaml`).
 
 ## What this establishes for the proposal
 
