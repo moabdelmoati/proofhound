@@ -24,6 +24,8 @@ class ModelConfig(BaseModel):
     provider: str  # anthropic | openai | openai_compatible | fake
     model: str = ""
     api_key_env: str | None = None
+    # openai/openai_compatible: further key env vars, tried in order once a key runs out of quota
+    fallback_key_envs: list[str] = []
     base_url: str | None = None
     effort: str | None = None  # anthropic: output_config.effort
     fallbacks: str | None = None  # anthropic: "default" enables server-side refusal fallback
@@ -103,14 +105,40 @@ class AnthropicClient(LLMClient):
         )
 
 
+_QUOTA_MARKERS = ("402", "429", "quota", "insufficient", "balance", "rate_limit")
+
+
+def is_quota_error(error: Exception) -> bool:
+    return any(m in str(error).lower() for m in _QUOTA_MARKERS)
+
+
 class OpenAIClient(LLMClient):
     def __init__(self, name: str, cfg: ModelConfig):
         import openai
 
         self.name = name
         self.cfg = cfg
-        key = os.environ.get(cfg.api_key_env) if cfg.api_key_env else None
-        self.client = openai.OpenAI(api_key=key or "not-needed", base_url=cfg.base_url)
+        self._openai = openai
+        envs = [e for e in (cfg.api_key_env, *cfg.fallback_key_envs) if e]
+        self._keys = [(e, os.environ[e]) for e in envs if os.environ.get(e)]
+        self._key_index = 0
+        self.client = self._connect()
+
+    def _connect(self):
+        key = self._keys[self._key_index][1] if self._keys else "not-needed"
+        return self._openai.OpenAI(api_key=key, base_url=self.cfg.base_url)
+
+    def _create(self, kwargs: dict):
+        while True:
+            try:
+                return self.client.chat.completions.create(**kwargs)
+            except Exception as e:
+                if not is_quota_error(e) or self._key_index + 1 >= len(self._keys):
+                    raise
+                old = self._keys[self._key_index][0]
+                self._key_index += 1
+                print(f"[{self.name}] {old} out of quota; switching to {self._keys[self._key_index][0]}")
+                self.client = self._connect()
 
     def complete(self, system: str, prompt: str) -> Completion:
         kwargs: dict = {
@@ -124,7 +152,7 @@ class OpenAIClient(LLMClient):
         if self.cfg.temperature is not None:
             kwargs["temperature"] = self.cfg.temperature
         start = time.monotonic()
-        response = self.client.chat.completions.create(**kwargs)
+        response = self._create(kwargs)
         choice = response.choices[0]
         usage = response.usage
         return Completion(

@@ -1,5 +1,6 @@
 """Generate and execution-check Jazzer.js harnesses for SAST findings."""
 
+import re
 import shutil
 from pathlib import Path
 
@@ -173,13 +174,18 @@ class HarnessAgent:
         )
 
 
+_FENCED = re.compile(r"```[\w+-]*[ \t]*\n(.*?)(?:\n```|\Z)", re.DOTALL)
+
+
 def _javascript(text: str) -> str:
-    """Strip the common Markdown fence without altering ordinary JavaScript output."""
-    value = text.strip()
-    if value.startswith("```"):
-        value = value.split("\n", 1)[1] if "\n" in value else ""
-        if value.rstrip().endswith("```"):
-            value = value.rstrip()[:-3]
+    """Extract the harness from a reply: the fenced block that defines the fuzz entry point (or
+    the first fenced block), so prose before or after the code does not fail the syntax check.
+    Unfenced replies are returned as they are."""
+    blocks = _FENCED.findall(text)
+    if blocks:
+        value = next((b for b in blocks if "module.exports.fuzz" in b), blocks[0])
+    else:
+        value = text
     return value.strip() + "\n"
 
 

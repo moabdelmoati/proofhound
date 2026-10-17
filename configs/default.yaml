@@ -47,22 +47,25 @@ models:
     model: ""                 # fill in the model id you want to use
     base_url: https://generativelanguage.googleapis.com/v1beta/openai/
     api_key_env: GEMINI_API_KEY
-  # CodeCraft gateway (OpenAI-compatible). Key in .env as CODECRAFT_API_KEY.
+  # CodeCraft gateway (OpenAI-compatible). Keys in .env; when one runs out of quota the client
+  # moves to the next key in fallback_key_envs.
   codecraft-claude:           # smallest/cheapest Claude available on CodeCraft (no Haiku listed)
     provider: openai_compatible
     model: claude-sonnet-5
     base_url: https://codecraftapi.com/v1
     api_key_env: CODECRAFT_API_KEY
+    fallback_key_envs: [CODECRAFT_API_KEY_2, CODECRAFT_API_KEY_3]
     max_tokens: 4000          # a harness is small; keep cost down
   codecraft-opus:             # stronger Claude for hard harnesses / escalation
     provider: openai_compatible
     model: claude-opus-5-5
     base_url: https://codecraftapi.com/v1
     api_key_env: CODECRAFT_API_KEY
+    fallback_key_envs: [CODECRAFT_API_KEY_2, CODECRAFT_API_KEY_3]
     max_tokens: 4000
-  local-harness:              # our fine-tuned Qwen2.5-Coder-1.5B + LoRA, via training/serve_local.py
+  local-harness:              # our fine-tuned Qwen2.5-Coder + LoRA, via training/serve_local.py
     provider: openai_compatible
     model: harness
     base_url: http://127.0.0.1:8000/v1
-    max_tokens: 2048
+    max_tokens: 1536          # generation stops at the end-of-turn token; this is only a cap
     temperature: 0.0

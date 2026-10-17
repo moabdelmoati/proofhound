@@ -1,6 +1,7 @@
 """Command-line entry point: `proofhound scan`."""
 
 import subprocess
+import sys
 from pathlib import Path
 
 import typer
@@ -22,6 +23,13 @@ from proofhound.sast.semgrep import SemgrepEngine
 
 app = typer.Typer(help="ProofHound: prove vulnerabilities instead of guessing.")
 console = Console()
+
+
+@app.callback()
+def _load_env() -> None:
+    from dotenv import load_dotenv
+
+    load_dotenv(override=True)  # API keys live in .env; it wins over stale OS variables
 
 
 def _resolve(repo: Path, commit: str) -> str:
@@ -149,6 +157,27 @@ def benchmark_sast(
     detected = sum(r.detected for r in scored)
     fps = sum(r.false_positives for r in scored)
     console.print(f"\nDetected {detected}/{len(scored)}   SAST false positives: {fps}   -> {out}")
+
+
+@app.command("compare-models")
+def compare_models(
+    cases: Path = typer.Option(Path("benchmark/cases"), help="Directory of pre-built benchmark cases."),
+    config: Path = typer.Option(Path("configs/default.yaml"), help="Config file."),
+    models: list[str] = typer.Option(..., "--model", help="Model key from config (repeat for each model to compare)."),
+    out: Path = typer.Option(Path("runs/compare"), help="Output directory for logs and summary."),
+    max_cases: int = typer.Option(None, help="Stop after this many cases (smoke test)."),
+) -> None:
+    """Compare harness models end to end (Docker). Runs training/compare_models.py.
+
+    Example: proofhound compare-models --model local-harness --model codecraft-claude
+    """
+    cmd = [
+        sys.executable, "training/compare_models.py", "--cases", str(cases),
+        "--config", str(config), "--out", str(out), "--models", *models,
+    ]
+    if max_cases is not None:
+        cmd += ["--max-cases", str(max_cases)]
+    raise SystemExit(subprocess.run(cmd, check=False).returncode)
 
 
 @app.command()
