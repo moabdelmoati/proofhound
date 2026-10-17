@@ -53,13 +53,14 @@ def candidates(secbench: Path, classes: list[str], seed: int) -> list[tuple[str,
 
 
 def pick_finding(findings: list, sink: str, tolerance: int):
-    sink_file, sink_line, _ = sink.rsplit(":", 2)
-    at_sink = [
-        f for f in findings
-        if f.file.as_posix() == sink_file and abs(f.line - int(sink_line)) <= tolerance
-    ]
-    if at_sink:
-        return at_sink[0], True
+    if sink and sink.count(":") >= 2:
+        sink_file, sink_line, _ = sink.rsplit(":", 2)
+        at_sink = [
+            f for f in findings
+            if f.file.as_posix() == sink_file and abs(f.line - int(sink_line)) <= tolerance
+        ]
+        if at_sink:
+            return at_sink[0], True
     return (findings[0], False) if findings else (None, False)
 
 
