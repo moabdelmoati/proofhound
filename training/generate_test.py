@@ -16,6 +16,7 @@ import serve_local
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--adapter", default="models/harness-adapter")
+    ap.add_argument("--base", default=None)
     ap.add_argument("--device", default="cuda", choices=["cpu", "cuda"])
     ap.add_argument("--load-4bit", action="store_true")
     ap.add_argument("--prompts", type=Path, default=Path("training/data/harness_attempts.jsonl"),
@@ -26,7 +27,7 @@ def main() -> None:
 
     lines = [line for line in args.prompts.read_text(encoding="utf-8").splitlines() if line.strip()]
     prompt = json.loads(lines[args.index])["prompt"]
-    serve_local._load(args.adapter, None, args.device, args.load_4bit)
+    serve_local._load(args.adapter, args.base, args.device, args.load_4bit)
     text, prompt_tokens, completion_tokens, finish = serve_local._generate(
         [{"role": "user", "content": prompt}], args.max_tokens, 0.0
     )
