@@ -7,29 +7,33 @@ re-fuzzing confirms the fix.
 
 **Research spine:** the project compares a **single agent** (Term 1) against a **multi-agent**
 system (Term 2) with the same model, tools, and infrastructure (RQ3). See
-[docs/proposal.md](docs/proposal.md) and the full [docs/architecture.md](docs/architecture.md)
-(Arabic: `docs/proposal.ar.md`, `docs/architecture.ar.md`).
+[docs/shared/proposal.md](docs/shared/proposal.md) and the full
+[docs/shared/architecture.md](docs/shared/architecture.md) (Arabic: `docs/shared/proposal.ar.md`,
+`docs/shared/architecture.ar.md`).
 
 ## Layout
 
+The code is split by architecture. Both terms build on one shared `core`; Term 1 adds the single
+agent, Term 2 the multi-agent pipeline, so neither copies the other.
+
 | Path | Contents |
 |---|---|
-| `src/proofhound/agents/` | Analyzer, Scheduler, Harness, Fuzzer, Triage, Patcher |
-| `src/proofhound/orchestrator/` | Pipeline state, retries, time/token budgets |
-| `src/proofhound/llm/` | LLM clients and the small-model → large-model cascade |
-| `src/proofhound/sast/` | SAST engine interface (Semgrep first) |
-| `src/proofhound/adapters/` | Per-language adapters (JS/TS first, Python in Term 2) |
-| `src/proofhound/sandbox/` | Docker runner: no network, resource limits |
-| `src/proofhound/vcs/` | Diff parsing and changed-function extraction |
-| `src/proofhound/reporting/` | JSON, SARIF, MR comment output |
-| `src/proofhound/datalog/` | Logs verified harnesses/patches as training data |
-| `docker/` | Sandbox images (Jazzer.js) |
-| `rules/semgrep/` | Our Semgrep rules |
-| `benchmark/` | Benchmark cases (SecBench.js, advisories) with ground truth |
-| `training/` | Colab notebooks and datasets for QLoRA adapters |
-| `experiments/` | Experiment configs and results (RQ1–RQ6) |
-| `examples/` | Demo targets (NodeGoat, Juice Shop, injected cases) |
-| `docs/` | Architecture notes and literature review |
+| `src/proofhound/core/` | Shared by both terms: models, config, budget, LLM clients, attempt log |
+| `src/proofhound/core/adapters/` | Per-language adapters (JavaScript/TypeScript, Python) |
+| `src/proofhound/core/analysis/` | Diff → changed functions, SAST (Semgrep), the Analyzer |
+| `src/proofhound/core/fuzzing/` | Docker sandbox and the Fuzzer (crash confirmation and replay) |
+| `src/proofhound/core/harness/` | Harness generation with execution checks; the local model's chat format |
+| `src/proofhound/core/reporting/` | JSON and SARIF reports |
+| `src/proofhound/single_agent/` | **Term 1** — one LLM drives the tools in a single loop |
+| `src/proofhound/multi_agent/` | **Term 2** — specialized agents in a pipeline (triage, scheduler, patcher, cascade) |
+| `src/proofhound/evaluation/` | Benchmark case builder, SAST scoring, model comparison |
+| `training/generate/` | Training-data generation (distillation, OSS-Fuzz seed) |
+| `training/train/` | QLoRA fine-tuning, locally or on Colab |
+| `training/serve/` | Serve the fine-tuned model behind an OpenAI-compatible endpoint |
+| `tests/` | Mirrors `src/proofhound/` (`core/`, `single_agent/`, `multi_agent/`) |
+| `docs/shared/` · `docs/term1/` · `docs/term2/` | Proposal and architecture · Term 1 docs · Term 2 docs |
+| `docker/` · `rules/semgrep/` · `configs/` | Sandbox images · our Semgrep rules · settings |
+| `benchmark/` · `experiments/` | Benchmark cases with ground truth · experiment results |
 
 ## Setup
 
@@ -57,7 +61,7 @@ proofhound benchmark-sast
 ```
 
 Benchmark cases are built from SecBench.js (clone it into `vendor/SecBench.js`) with
-`proofhound.benchmark.secbench.build_case`; each case's `case.yaml` is committed, its `repo/`
+`proofhound.evaluation.secbench.build_case`; each case's `case.yaml` is committed, its `repo/`
 is rebuilt locally.
 
 `proofhound scan` uses the model selected by `harness.model` in `configs/default.yaml`. Set its

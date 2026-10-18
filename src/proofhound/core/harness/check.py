@@ -1,0 +1,82 @@
+"""The execution check every harness must pass: syntax, a short fuzz probe, coverage of the target.
+
+Shared by the HarnessAgent (multi-agent) and the single agent's tools, so both architectures judge
+a harness by exactly the same standard. A harness has `reached` its target only when coverage
+records the target function executing.
+"""
+
+import shutil
+from dataclasses import dataclass
+from pathlib import Path
+
+from proofhound.core.adapters.base import LanguageAdapter
+from proofhound.core.fuzzing.sandbox import OUT, DockerSandbox
+from proofhound.core.models import ChangedFunction
+
+
+@dataclass
+class HarnessCheck:
+    syntax_ok: bool = False
+    loaded: bool = False
+    reached: bool = False
+    failed_stage: str | None = None  # syntax | probe | reach | sandbox
+    error: str = ""
+    sandbox_error: Exception | None = None  # infrastructure failure; callers re-raise it
+
+    @property
+    def passed(self) -> bool:
+        return self.syntax_ok and self.loaded and self.reached
+
+
+def check_harness(
+    sandbox: DockerSandbox, adapter: LanguageAdapter, function: ChangedFunction,
+    target: Path, out: Path, probe_time_s: int,
+) -> HarnessCheck:
+    """Check `out/harness.js` against `function` in `target`. Never raises: a sandbox failure is
+    returned in `sandbox_error` with the stages that completed before it."""
+    check = HarnessCheck()
+    # Jazzer.js requires the corpus directory to exist before the probe run.
+    (out / "corpus").mkdir(parents=True, exist_ok=True)
+    try:
+        syntax = sandbox.run(["node", "--check", f"{OUT}/harness.js"], target, out, timeout_s=30)
+        check.syntax_ok = syntax.exit_code == 0 and not syntax.timed_out
+        if not check.syntax_ok:
+            check.failed_stage = "syntax"
+            check.error = syntax.output or f"node --check exited with {syntax.exit_code}"
+            return check
+
+        probe = sandbox.run(
+            adapter.fuzz_command(probe_time_s), target, out, timeout_s=probe_time_s + 45,
+        )
+        (out / "harness-probe.log").write_text(probe.output, encoding="utf-8")
+        reports = adapter.parse_reports(probe.output)
+        check.loaded = (
+            not probe.timed_out
+            and not any(r.kind == "Uncaught Exception" for r in reports)
+            and (probe.exit_code == 0 or any(r.is_vulnerability for r in reports))
+        )
+        if not check.loaded:
+            check.failed_stage = "probe"
+            check.error = probe.output or (
+                "The harness probe timed out." if probe.timed_out
+                else f"The harness probe exited with status {probe.exit_code}."
+            )
+            return check
+
+        # Never accept a coverage report left by an earlier attempt.
+        shutil.rmtree(out / "coverage", ignore_errors=True)
+        coverage = sandbox.run(adapter.coverage_command("corpus"), target, out, timeout_s=60)
+        (out / "coverage.log").write_text(coverage.output, encoding="utf-8")
+        hits = adapter.function_hits(out, function)
+        check.reached = hits is not None and hits > 0
+        if not check.reached:
+            check.failed_stage = "reach"
+            check.error = (
+                "Coverage did not record execution of the target function." if hits is not None
+                else "No Jazzer.js coverage report was produced; check that the target loads."
+            )
+    except Exception as e:
+        check.failed_stage = "sandbox"
+        check.error = f"{type(e).__name__}: {e}"
+        check.sandbox_error = e
+    return check

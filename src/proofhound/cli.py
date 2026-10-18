@@ -1,25 +1,24 @@
-"""Command-line entry point: `proofhound scan`."""
+"""Command-line entry point: `proofhound scan` (single or multi agent), analysis and evaluation."""
 
 import subprocess
-import sys
 from pathlib import Path
 
 import typer
 from rich.console import Console
 
 from proofhound import __version__
-from proofhound.adapters import get_adapter
-from proofhound.adapters.javascript import JavaScriptAdapter
-from proofhound.agents.analyzer import AnalyzeJob, AnalyzerAgent
-from proofhound.agents.fuzzer import FuzzerAgent
-from proofhound.agents.harness import HarnessAgent
-from proofhound.config import load_settings
-from proofhound.datalog.logger import AttemptLogger
-from proofhound.llm.client import build_client
-from proofhound.models import FindingStatus, RunReport
-from proofhound.orchestrator.pipeline import Pipeline
-from proofhound.sandbox.docker_runner import DockerSandbox
-from proofhound.sast.semgrep import SemgrepEngine
+from proofhound.core.adapters import get_adapter
+from proofhound.core.adapters.javascript import JavaScriptAdapter
+from proofhound.core.analysis.analyzer import AnalyzeJob, AnalyzerAgent
+from proofhound.core.analysis.semgrep import SemgrepEngine
+from proofhound.core.config import Settings, load_settings
+from proofhound.core.datalog.logger import AttemptLogger
+from proofhound.core.fuzzing.fuzzer import FuzzerAgent
+from proofhound.core.fuzzing.sandbox import DockerSandbox
+from proofhound.core.harness.agent import HarnessAgent
+from proofhound.core.llm.client import ModelConfig, build_client
+from proofhound.core.models import FindingStatus, RunReport
+from proofhound.multi_agent.pipeline import Pipeline
 
 app = typer.Typer(help="ProofHound: prove vulnerabilities instead of guessing.")
 console = Console()
@@ -70,38 +69,77 @@ def scan(
     repo: Path = typer.Option(Path("."), help="Path to the git repository."),
     commit: str = typer.Option("HEAD", help="Commit to analyze against its parent."),
     config: Path = typer.Option(Path("configs/default.yaml"), help="Config file."),
+    agent: str = typer.Option(
+        "single", help="single: one LLM drives every tool (Term 1). "
+        "multi: the specialized-agent pipeline (Term 2).",
+    ),
+    model: str = typer.Option(
+        None, help="Model key from the config. Defaults to single_agent.model or harness.model.",
+    ),
     harness_dir: Path = typer.Option(
         None,
-        help="Use hand-written harnesses (<function>.js) instead of the LLM. "
+        help="--agent multi only: use hand-written harnesses (<function>.js) instead of the LLM. "
         "No API key needed; used for testing and the demo fallback.",
     ),
 ) -> None:
-    """Analyze a commit, generate harnesses, and confirm findings by fuzzing."""
+    """Analyze a commit, write harnesses, and prove findings by fuzzing."""
+    if agent not in {"single", "multi"}:
+        raise typer.BadParameter("--agent must be 'single' or 'multi'")
+    if harness_dir is not None and agent != "multi":
+        raise typer.BadParameter("--harness-dir only applies to --agent multi")
     settings = load_settings(config)
+    sha = _resolve(repo, commit)
+    if agent == "single":
+        _scan_single(settings, repo, sha, model)
+    else:
+        _scan_multi(settings, repo, sha, model, harness_dir)
+
+
+def _model_config(settings: Settings, key: str) -> ModelConfig:
+    try:
+        return settings.models[key]
+    except KeyError as e:
+        raise typer.BadParameter(
+            f"Model '{key}' is missing from the config's models section."
+        ) from e
+
+
+def _scan_single(settings: Settings, repo: Path, sha: str, model: str | None) -> None:
+    from proofhound.single_agent.runner import scan_commit
+
+    key = model or settings.single_agent.model
+    _model_config(settings, key)
+    run_dir = settings.output.dir / f"{sha[:12]}-single"
+    report, result = scan_commit(settings, repo, sha, run_dir, model_key=key)
+    _print_summary(report)
+    console.print(
+        f"\nSingle agent ({key}): {len(result.steps)} steps, stopped: {result.stop_reason}, "
+        f"protocol errors: {result.protocol_errors}, tokens: {result.tokens_used:,}"
+    )
+    console.print(f"Report: {run_dir / 'report.json'}   Transcript: {run_dir / 'transcript.jsonl'}")
+
+
+def _scan_multi(
+    settings: Settings, repo: Path, sha: str, model: str | None, harness_dir: Path | None,
+) -> None:
     adapter = JavaScriptAdapter()
     sandbox = DockerSandbox(settings.sandbox)
     attempt_logger = AttemptLogger(Path("training/data/harness_attempts.jsonl"))
     if harness_dir is not None:
-        from proofhound.orchestrator.manual_harness import ManualHarnessStep
+        from proofhound.multi_agent.manual_harness import ManualHarnessStep
 
         harness_agent = ManualHarnessStep(harness_dir)
     else:
-        try:
-            model_config = settings.models[settings.harness.model]
-        except KeyError as e:
-            raise typer.BadParameter(
-                f"Harness model '{settings.harness.model}' is missing from the config models "
-                "section."
-            ) from e
+        key = model or settings.harness.model
+        model_config = _model_config(settings, key)
         harness_agent = HarnessAgent(
-            client=build_client(settings.harness.model, model_config),
-            model=model_config.model or settings.harness.model,
+            client=build_client(key, model_config),
+            model=model_config.model or key,
             adapter=adapter,
             sandbox=sandbox,
             settings=settings.harness,
             logger=attempt_logger,
         )
-    sha = _resolve(repo, commit)
     pipeline = Pipeline(
         settings,
         AnalyzerAgent(adapter, SemgrepEngine(), settings.sast.rules_dir),
@@ -142,7 +180,7 @@ def benchmark_sast(
     config: Path = typer.Option(Path("configs/default.yaml"), help="Config file."),
 ) -> None:
     """Score the Analyzer (SAST only) against each case's ground-truth sink."""
-    from proofhound.benchmark.runner import run_sast_benchmark
+    from proofhound.evaluation.sast_benchmark import run_sast_benchmark
 
     settings = load_settings(config)
     analyzer = AnalyzerAgent(JavaScriptAdapter(), SemgrepEngine(), settings.sast.rules_dir)
@@ -167,17 +205,16 @@ def compare_models(
     out: Path = typer.Option(Path("runs/compare"), help="Output directory for logs and summary."),
     max_cases: int = typer.Option(None, help="Stop after this many cases (smoke test)."),
 ) -> None:
-    """Compare harness models end to end (Docker). Runs training/compare_models.py.
+    """Compare harness models end to end (Docker).
 
     Example: proofhound compare-models --model local-harness --model codecraft-claude
     """
-    cmd = [
-        sys.executable, "training/compare_models.py", "--cases", str(cases),
-        "--config", str(config), "--out", str(out), "--models", *models,
-    ]
+    from proofhound.evaluation.compare import main as compare_main
+
+    argv = ["--cases", str(cases), "--config", str(config), "--out", str(out), "--models", *models]
     if max_cases is not None:
-        cmd += ["--max-cases", str(max_cases)]
-    raise SystemExit(subprocess.run(cmd, check=False).returncode)
+        argv += ["--max-cases", str(max_cases)]
+    compare_main(argv)
 
 
 @app.command()

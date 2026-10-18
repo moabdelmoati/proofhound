@@ -12,6 +12,10 @@ harness:
   large_model_repair_attempts: 2
   use_sast_hints: true        # false = unguided variant for RQ1
 
+single_agent:                 # Term 1: one LLM drives every tool (proofhound scan --agent single)
+  model: codecraft-claude     # key in `models` below; local-harness for the local model
+  max_steps: 30               # model calls per run; the run budget above also applies
+
 sandbox:
   image: proofhound/jazzerjs:latest
   network: none
@@ -63,7 +67,7 @@ models:
     api_key_env: CODECRAFT_API_KEY
     fallback_key_envs: [CODECRAFT_API_KEY_2, CODECRAFT_API_KEY_3]
     max_tokens: 4000
-  local-harness:              # our fine-tuned Qwen2.5-Coder + LoRA, via training/serve_local.py
+  local-harness:              # our fine-tuned Qwen2.5-Coder + LoRA, via training/serve/serve_local.py
     provider: openai_compatible
     model: harness
     base_url: http://127.0.0.1:8000/v1
