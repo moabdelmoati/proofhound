@@ -5,8 +5,9 @@ loss is computed on the assistant's harness only — never on the prompt — so 
 answer the pipeline's prompt rather than to reproduce it. Over-long prompts are shrunk inside the
 source blocks; the harness itself is never truncated (examples that cannot fit are skipped).
 
-Data: OSS-Fuzz seed harnesses + verified distillation attempts (reached == true), excluding any
-record tagged split="eval".
+Data: training/data/harness_train.jsonl from training/generate/build_dataset.py: distilled
+harnesses that proved their finding (crash confirmed by the matching bug detector), with prompts in
+the pipeline's current format. Records tagged split="eval" are always excluded.
 
     # inspect the dataset only (needs just the tokenizer):
     python training/train/train_local.py --dry-run
@@ -25,9 +26,9 @@ import statistics
 from pathlib import Path
 
 from proofhound.core.harness import chat_format as fmt
+from proofhound.core.harness.agent import PROMPT_VERSION
 
-DEFAULT_SEED = Path("training/data/seed_ossfuzz.jsonl")
-DEFAULT_ATTEMPTS = Path("training/data/harness_attempts.jsonl")
+DEFAULT_DATA = Path("training/data/harness_train.jsonl")
 MIN_PROMPT_TOKENS = 256
 
 
@@ -37,24 +38,20 @@ def _jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def load_examples(seed: Path, attempts: list[Path]) -> tuple[list[dict], dict]:
-    stats = {"seed": 0, "distillation": 0, "eval_excluded": 0, "duplicates": 0}
+def load_examples(paths: list[Path]) -> tuple[list[dict], dict]:
+    """{prompt, completion} rows from `paths`, minus eval-split records and exact duplicates."""
+    stats = {"eval_excluded": 0, "duplicates": 0, "stale_prompt_version": 0}
     rows: list[dict] = []
-    for r in _jsonl(seed):
-        if r.get("split") == "eval":
-            stats["eval_excluded"] += 1
-            continue
-        rows.append({"prompt": r["prompt"], "completion": r["completion"], "source": "seed"})
-        stats["seed"] += 1
-    for path in attempts:
+    for path in paths:
         for r in _jsonl(path):
-            if not (r.get("reached") and r.get("output")):
-                continue
             if r.get("split") == "eval":
                 stats["eval_excluded"] += 1
                 continue
-            rows.append({"prompt": r["prompt"], "completion": r["output"], "source": "distillation"})
-            stats["distillation"] += 1
+            if r.get("prompt_version") != PROMPT_VERSION:
+                stats["stale_prompt_version"] += 1
+            source = r.get("source", path.stem)
+            stats[source] = stats.get(source, 0) + 1
+            rows.append({"prompt": r["prompt"], "completion": r["completion"], "source": source})
     unique: dict[tuple[str, str], dict] = {}
     for r in rows:
         unique.setdefault((r["prompt"], r["completion"]), r)
@@ -112,9 +109,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="Qwen/Qwen2.5-Coder-1.5B-Instruct")
     ap.add_argument("--out", default="models/harness-adapter")
-    ap.add_argument("--seed-data", type=Path, default=DEFAULT_SEED)
-    ap.add_argument("--attempts", type=Path, nargs="*", default=[DEFAULT_ATTEMPTS],
-                    help="Harness attempt logs (JSONL) to mine for verified distillation examples.")
+    ap.add_argument("--data", type=Path, nargs="+", default=[DEFAULT_DATA],
+                    help="{prompt, completion} JSONL files (training/generate/build_dataset.py).")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--max-length", type=int, default=2048)
     ap.add_argument("--lora-rank", type=int, default=16)
@@ -127,7 +123,7 @@ def main() -> None:
 
     from transformers import AutoTokenizer
 
-    examples, stats = load_examples(args.seed_data, args.attempts)
+    examples, stats = load_examples(args.data)
     print(f"examples: {len(examples)}  {stats}")
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     if tokenizer.pad_token is None:
@@ -142,9 +138,10 @@ def main() -> None:
     print(f"sequence tokens: median {int(statistics.median(lengths))}  max {max(lengths)}")
     print(f"harness tokens:  median {int(statistics.median(completion_lengths))}  "
           f"max {max(completion_lengths)}  -> serving prompt budget {prompt_budget}")
-    if stats["distillation"] == 0:
-        print("WARNING: no distillation examples. The model will only see OSS-Fuzz seed prompts, "
-              "not the pipeline's real prompt; generate train-split attempts first.")
+    if stats["stale_prompt_version"]:
+        print(f"WARNING: {stats['stale_prompt_version']} example(s) are not in prompt format "
+              f"{PROMPT_VERSION}; the model would be trained on prompts the pipeline no longer "
+              "sends. Rebuild them with training/generate/build_dataset.py.")
 
     if args.dry_run:
         sample = data[0]
