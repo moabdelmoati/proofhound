@@ -114,6 +114,10 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--max-length", type=int, default=2048)
     ap.add_argument("--lora-rank", type=int, default=16)
+    ap.add_argument("--target-modules", nargs="+", default=None,
+                    help="LoRA target modules (default: all-linear). "
+                         "Pass e.g. q_proj k_proj v_proj o_proj to restrict to attention only — "
+                         "required to fit a 7B model on a 16 GB T4.")
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--grad-accum", type=int, default=8)
     ap.add_argument("--save-steps", type=int, default=50,
@@ -169,9 +173,10 @@ def main() -> None:
         args.model, quantization_config=bnb, device_map="auto", dtype=dtype,
     )
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+    target_modules = args.target_modules if args.target_modules else "all-linear"
     model = get_peft_model(model, LoraConfig(
         r=args.lora_rank, lora_alpha=args.lora_rank * 2, lora_dropout=0.05,
-        task_type="CAUSAL_LM", target_modules="all-linear",
+        task_type="CAUSAL_LM", target_modules=target_modules,
     ))
     model.print_trainable_parameters()
 
