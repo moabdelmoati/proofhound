@@ -9,7 +9,7 @@ from pathlib import Path
 
 from proofhound.core.adapters.base import FuzzerReport, LanguageAdapter
 from proofhound.core.agent import Agent
-from proofhound.core.datalog.logger import AttemptLogger
+from proofhound.core.datalog.logger import AttemptLogger, case_id
 from proofhound.core.fuzzing.sandbox import DockerSandbox, SandboxResult
 from proofhound.core.models import Crash, Finding
 
@@ -58,7 +58,7 @@ class FuzzerAgent(Agent[FuzzJob, FuzzOutcome]):
             if crash.reproduced == self.replays:
                 outcome.crashes.append(crash)
                 if self.attempt_logger is not None:
-                    self.attempt_logger.mark_crash_confirmed(data.finding.id)
+                    self.attempt_logger.mark_crash_confirmed(data.finding.id, case_id(data.target))
             else:
                 outcome.other_reports.append(report)
         return outcome

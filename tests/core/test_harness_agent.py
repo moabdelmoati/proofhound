@@ -4,7 +4,7 @@ from proofhound.core.adapters.javascript import JavaScriptAdapter
 from proofhound.core.config import HarnessSettings
 from proofhound.core.datalog.logger import AttemptLogger
 from proofhound.core.fuzzing.sandbox import SandboxResult
-from proofhound.core.harness.agent import HarnessAgent
+from proofhound.core.harness.agent import SINK_MARK, HarnessAgent, build_prompt
 from proofhound.core.llm.client import FakeClient
 from proofhound.core.models import ChangedFunction, Finding, Severity
 
@@ -55,7 +55,7 @@ def test_harness_agent_repairs_and_discards_stale_coverage(tmp_path):
     logger = AttemptLogger(tmp_path / "attempts.jsonl")
     client = FakeClient(replies=[
         "```javascript\nmodule.exports.fuzz = () => {};\n```",
-        "module.exports.fuzz = () => {};",
+        "module.exports.fuzz = (data) => {};",
     ])
     sandbox = FakeSandbox([0, 4])
     agent = HarnessAgent(
@@ -74,6 +74,7 @@ def test_harness_agent_repairs_and_discards_stale_coverage(tmp_path):
     assert first.failed_stage == "reach"
     assert not first.reached and second.reached and second.coverage_gain
     assert "previous harness failed" in client.prompts[1]
+    assert "module.exports.fuzz = () => {};" in client.prompts[1]  # the repair sees its harness
     assert (out / "harness.js").read_text(encoding="utf-8").startswith("module.exports")
 
 
@@ -129,3 +130,70 @@ def test_harness_agent_rejects_probe_timeout_and_logs_attempt(tmp_path):
     [record] = logger.read()
     assert record.failed_stage == "probe"
     assert not record.loaded and not record.reached
+
+
+def _agent(tmp_path, replies, sandbox, repairs):
+    target = tmp_path / "repo"
+    (target / "lib").mkdir(parents=True)
+    (target / "lib/target.js").write_text("module.exports.run = () => {};", encoding="utf-8")
+    out = tmp_path / "out"
+    out.mkdir()
+    logger = AttemptLogger(tmp_path / "attempts.jsonl")
+    client = FakeClient(replies=list(replies))
+    agent = HarnessAgent(
+        client, "fake-model", HitAdapter(), sandbox,
+        HarnessSettings(probe_time_s=1, large_model_repair_attempts=repairs), logger,
+    )
+    return agent, client, logger, target, out
+
+
+class CountingSandbox(FakeSandbox):
+    def __init__(self, coverage_hits):
+        super().__init__(coverage_hits)
+        self.syntax_checks = 0
+
+    def run(self, command, target, out, timeout_s, image=None, network=False):
+        self.syntax_checks += command[:2] == ["node", "--check"]
+        return super().run(command, target, out, timeout_s, image, network)
+
+
+def test_replies_without_a_harness_skip_the_sandbox(tmp_path):
+    echo = "Generate a harness...\nModule path inside the sandbox: /work/target/lib/target.js\n"
+    sandbox = CountingSandbox([4])
+    agent, client, logger, target, out = _agent(
+        tmp_path, ["", echo, "module.exports.fuzz = () => {};"], sandbox, repairs=2,
+    )
+
+    harness = agent.produce(_finding(), target, out)
+
+    assert harness is not None and harness.attempts == 3
+    assert sandbox.syntax_checks == 1  # only the real harness was run
+    empty, echoed, good = logger.read()
+    assert empty.failed_stage == echoed.failed_stage == "no_harness"
+    assert "repeated the prompt" in client.prompts[2]
+    assert good.reached
+
+
+def test_unchanged_repair_is_not_rerun(tmp_path):
+    sandbox = CountingSandbox([0])
+    agent, _client, logger, target, out = _agent(
+        tmp_path, ["module.exports.fuzz = () => {};"] * 2, sandbox, repairs=1,
+    )
+
+    assert agent.produce(_finding(), target, out) is None
+    assert sandbox.syntax_checks == 1
+    first, second = logger.read()
+    assert first.failed_stage == second.failed_stage == "reach"
+    assert first.syntax_ok and second.syntax_ok and second.loaded
+
+
+def test_prompt_names_and_marks_the_sink_line():
+    finding = _finding().model_copy(update={"line": 2})
+    source = "function run(input) {\n  exec(input);\n}"
+
+    prompt = build_prompt(finding, source, source, "/work/target/lib/target.js", "template")
+    unguided = build_prompt(finding, source, source, "/work/target/lib/target.js", "template", False)
+
+    assert f"  exec(input);  {SINK_MARK}\n}}" in prompt
+    assert "Sink line: 2" in prompt
+    assert SINK_MARK not in unguided and "Sink line" not in unguided

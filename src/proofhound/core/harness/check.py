@@ -5,6 +5,7 @@ a harness by exactly the same standard. A harness has `reached` its target only 
 records the target function executing.
 """
 
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,29 @@ from pathlib import Path
 from proofhound.core.adapters.base import LanguageAdapter
 from proofhound.core.fuzzing.sandbox import OUT, DockerSandbox
 from proofhound.core.models import ChangedFunction
+
+FAILURE_LIMIT = 2000  # characters of failure text handed back to the model
+
+# Lines in a probe log that never explain why a harness failed: libFuzzer/Jazzer status lines,
+# Node's circular-dependency warning, and stack frames inside Jazzer or Node itself.
+_NOISE = re.compile(
+    r"^(INFO: |#\d+\s|MS: |Done \d+ runs|Dictionary: |\(node:\d+\) Warning: Accessing non-existent"
+    r"|\(Use `node --trace-warnings"
+    r"|\s+at .*(/opt/jazzer/|node:internal|node_modules/(@jazzer\.js|source-map-support|append-transform)))"
+)
+
+
+def summarize_failure(output: str, limit: int = FAILURE_LIMIT) -> str:
+    """The part of a check's output that explains the failure, without status noise and cut to
+    `limit` characters (head and tail kept), so a long log cannot crowd the source out of a
+    repair prompt. The full log stays on disk."""
+    lines = [line for line in output.splitlines() if not _NOISE.match(line)]
+    text = "\n".join(lines).strip()
+    if len(text) <= limit:
+        return text
+    head = limit * 3 // 4
+    tail = limit - head
+    return f"{text[:head]}\n... {len(text) - limit} characters omitted ...\n{text[-tail:]}"
 
 
 @dataclass
@@ -42,7 +66,9 @@ def check_harness(
         check.syntax_ok = syntax.exit_code == 0 and not syntax.timed_out
         if not check.syntax_ok:
             check.failed_stage = "syntax"
-            check.error = syntax.output or f"node --check exited with {syntax.exit_code}"
+            check.error = (
+                summarize_failure(syntax.output) or f"node --check exited with {syntax.exit_code}"
+            )
             return check
 
         probe = sandbox.run(
@@ -57,7 +83,7 @@ def check_harness(
         )
         if not check.loaded:
             check.failed_stage = "probe"
-            check.error = probe.output or (
+            check.error = summarize_failure(probe.output) or (
                 "The harness probe timed out." if probe.timed_out
                 else f"The harness probe exited with status {probe.exit_code}."
             )

@@ -117,3 +117,13 @@ def test_fusion_class_mismatch_is_medium():
                   stack_trace="", signature="s", sink_location="a.js:1:1", reproduced=3)
     result = fuse(Severity.HIGH, "command-injection", FindingStatus.CONFIRMED, [crash], 30)
     assert 0.5 < result.confidence < 0.9
+
+
+def test_attempt_logger_marks_only_the_given_case(tmp_path):
+    # Finding ids hash rule, path and position, so two cases can share one.
+    log = AttemptLogger(tmp_path / "a.jsonl")
+    for case in ("case-a", "case-b"):
+        log.log(AttemptRecord(case=case, split="train", finding_id="f", vuln_class=None,
+                              attempt=1, model="m", prompt_version="v1", prompt="p", output="o"))
+    log.mark_crash_confirmed("f", "case-a")
+    assert [r.crash_confirmed for r in log.read()] == [True, False]

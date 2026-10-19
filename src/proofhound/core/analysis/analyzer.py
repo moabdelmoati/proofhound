@@ -44,7 +44,13 @@ class AnalyzerAgent(Agent[AnalyzeJob, Analysis]):
 
         raw = self.sast.scan(list(changed), self.rules_dir, root=data.repo)
         findings = []
+        seen: set[str] = set()
         for finding in raw:
+            # Semgrep reports one location once per taint trace; the id is the location, so the
+            # repeats are the same target and would only be fuzzed again under the same id.
+            if finding.id in seen:
+                continue
+            seen.add(finding.id)
             in_file = [f for f in functions if f.file == finding.file]
             fn = innermost(in_file, finding.line)
             if fn is not None:

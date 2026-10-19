@@ -58,15 +58,17 @@ models:
     model: claude-sonnet-5
     base_url: https://codecraftapi.com/v1
     api_key_env: CODECRAFT_API_KEY
-    fallback_key_envs: [CODECRAFT_API_KEY_2, CODECRAFT_API_KEY_3]
-    max_tokens: 4000          # a harness is small; keep cost down
+    fallback_key_envs: [CODECRAFT_API_KEY_2, CODECRAFT_API_KEY_3, CODECRAFT_API_KEY_4, CODECRAFT_API_KEY_5]
+    # claude-sonnet-5 thinks before answering and the thinking comes out of this budget: at 4000,
+    # half the replies were empty (all tokens spent thinking). Keep headroom above the thinking.
+    max_tokens: 16000
   codecraft-opus:             # stronger Claude for hard harnesses / escalation
     provider: openai_compatible
     model: claude-opus-5-5
     base_url: https://codecraftapi.com/v1
     api_key_env: CODECRAFT_API_KEY
-    fallback_key_envs: [CODECRAFT_API_KEY_2, CODECRAFT_API_KEY_3]
-    max_tokens: 4000
+    fallback_key_envs: [CODECRAFT_API_KEY_2, CODECRAFT_API_KEY_3, CODECRAFT_API_KEY_4, CODECRAFT_API_KEY_5]
+    max_tokens: 16000
   local-harness:              # our fine-tuned Qwen2.5-Coder + LoRA, via training/serve/serve_local.py
     provider: openai_compatible
     model: harness

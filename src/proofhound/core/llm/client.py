@@ -29,8 +29,10 @@ class ModelConfig(BaseModel):
     base_url: str | None = None
     effort: str | None = None  # anthropic: output_config.effort
     fallbacks: str | None = None  # anthropic: "default" enables server-side refusal fallback
+    # Reasoning models spend hidden thinking tokens from this same budget before writing the answer.
     max_tokens: int = 16000
     temperature: float | None = None  # only sent to providers that accept it
+    reasoning_effort: str | None = None  # openai/openai_compatible: low | medium | high
 
 
 @dataclass
@@ -41,6 +43,7 @@ class Completion:
     model: str
     stop_reason: str | None = None
     latency_s: float = 0.0
+    reasoning_tokens: int = 0  # part of output_tokens; spent on hidden thinking, not the answer
 
     @property
     def tokens_used(self) -> int:
@@ -151,10 +154,13 @@ class OpenAIClient(LLMClient):
         }
         if self.cfg.temperature is not None:
             kwargs["temperature"] = self.cfg.temperature
+        if self.cfg.reasoning_effort:
+            kwargs["reasoning_effort"] = self.cfg.reasoning_effort
         start = time.monotonic()
         response = self._create(kwargs)
         choice = response.choices[0]
         usage = response.usage
+        details = getattr(usage, "completion_tokens_details", None)
         return Completion(
             text=choice.message.content or "",
             input_tokens=usage.prompt_tokens if usage else 0,
@@ -162,6 +168,7 @@ class OpenAIClient(LLMClient):
             model=response.model,
             stop_reason=choice.finish_reason,
             latency_s=time.monotonic() - start,
+            reasoning_tokens=getattr(details, "reasoning_tokens", None) or 0,
         )
 
 
