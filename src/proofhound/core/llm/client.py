@@ -128,8 +128,13 @@ class OpenAIClient(LLMClient):
         self.client = self._connect()
 
     def _connect(self):
-        key = self._keys[self._key_index][1] if self._keys else "not-needed"
-        return self._openai.OpenAI(api_key=key, base_url=self.cfg.base_url)
+        if not self._keys:
+            # Keyless means our local server: a slow laptop GPU, not a flaky network. A retry would
+            # only queue the same generation again, so wait longer and never resend.
+            return self._openai.OpenAI(
+                api_key="not-needed", base_url=self.cfg.base_url, timeout=1800, max_retries=0,
+            )
+        return self._openai.OpenAI(api_key=self._keys[self._key_index][1], base_url=self.cfg.base_url)
 
     def _create(self, kwargs: dict):
         while True:

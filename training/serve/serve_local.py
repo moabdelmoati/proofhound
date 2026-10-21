@@ -14,6 +14,7 @@ Uses only the Python stdlib HTTP server (no extra web dependency).
 
 import argparse
 import json
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -21,6 +22,9 @@ from pathlib import Path
 from proofhound.core.harness import chat_format as fmt
 
 _STATE: dict = {}
+# Overlapping generations each hold their own KV cache; on a 6 GB GPU that spills into shared
+# system memory and every request slows to a crawl. Serve one at a time; /v1/models stays responsive.
+_GENERATE_LOCK = threading.Lock()
 DEFAULT_PROMPT_BUDGET = 1536
 
 
@@ -101,11 +105,16 @@ class Handler(BaseHTTPRequestHandler):
             return
         length = int(self.headers.get("Content-Length", 0))
         req = json.loads(self.rfile.read(length) or b"{}")
-        text, prompt_tokens, completion_tokens, finish = _generate(
-            req.get("messages", []),
-            req.get("max_completion_tokens") or req.get("max_tokens") or 1536,
-            req.get("temperature") or 0.0,
-        )
+        with _GENERATE_LOCK:
+            start = time.monotonic()
+            text, prompt_tokens, completion_tokens, finish = _generate(
+                req.get("messages", []),
+                req.get("max_completion_tokens") or req.get("max_tokens") or 1536,
+                req.get("temperature") or 0.0,
+            )
+            seconds = time.monotonic() - start
+        print(f"{time.strftime('%H:%M:%S')} prompt {prompt_tokens} -> {completion_tokens} tokens ({finish}) "
+              f"in {seconds:.1f}s ({completion_tokens / max(seconds, 1e-6):.1f} tok/s)", flush=True)
         self._send(200, {
             "id": "local-1", "object": "chat.completion", "created": int(time.time()),
             "model": _STATE["name"],
