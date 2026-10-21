@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> None:
     from proofhound.core.config import load_settings
     from proofhound.core.datalog.logger import AttemptLogger
     from proofhound.core.fuzzing.fuzzer import FuzzerAgent, FuzzJob
-    from proofhound.core.fuzzing.sandbox import DockerSandbox
+    from proofhound.core.fuzzing.sandbox import DockerSandbox, SandboxUnavailable
     from proofhound.core.harness.agent import HarnessAgent
     from proofhound.core.llm.client import build_client
 
@@ -95,9 +95,14 @@ def main(argv: list[str] | None = None) -> None:
     if missing:
         sys.exit(f"unknown model(s) {missing}; available: {', '.join(settings.models)}")
 
+    sandbox = DockerSandbox(settings.sandbox)
+    try:
+        sandbox.check_ready()
+    except SandboxUnavailable as e:
+        sys.exit(f"sandbox not ready, nothing was run (is Docker Desktop running?): {e}")
+
     args.out.mkdir(parents=True, exist_ok=True)
     adapter = JavaScriptAdapter()
-    sandbox = DockerSandbox(settings.sandbox)
     analyzer = AnalyzerAgent(adapter, SemgrepEngine(), settings.sast.rules_dir)
     agents, fuzzers, loggers = {}, {}, {}
     for key in args.models:
@@ -139,7 +144,10 @@ def main(argv: list[str] | None = None) -> None:
                     confirmed = False
                     if harness is not None and not args.no_fuzz:
                         job = FuzzJob(finding, repo, out, settings.budgets.fuzz_time_per_target_s)
-                        confirmed = bool(fuzzers[key].run(job).crashes)
+                        confirmed = fuzzers[key].run(job).confirmed
+                except SandboxUnavailable as e:
+                    # Every later attempt would fail the same way and be scored against the model.
+                    sys.exit(f"Docker stopped during {case_id}; stopping the run: {e}")
                 except Exception as e:
                     overall[key].errors += 1
                     print(f"  [{key}] error: {type(e).__name__}: {str(e)[:200]}")

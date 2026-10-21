@@ -17,6 +17,15 @@ from proofhound.core.config import SandboxSettings
 TARGET = "/work/target"
 OUT = "/work/out"
 
+# `docker run` exits 1 when it cannot reach the daemon, the same status a failing command gives,
+# so only the message tells the two apart.
+_DAEMON_DOWN = ("failed to connect to the docker api", "cannot connect to the docker daemon",
+                "error during connect")
+
+
+class SandboxUnavailable(RuntimeError):
+    """Docker itself failed, so the command never ran."""
+
 
 @dataclass
 class SandboxResult:
@@ -29,6 +38,18 @@ class SandboxResult:
 class DockerSandbox:
     def __init__(self, settings: SandboxSettings):
         self.settings = settings
+
+    def check_ready(self) -> None:
+        """Raise SandboxUnavailable unless Docker is reachable and the sandbox image exists."""
+        try:
+            proc = subprocess.run(
+                ["docker", "image", "inspect", self.settings.image],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", check=False, timeout=60,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+            raise SandboxUnavailable(f"docker is not usable: {e}") from e
+        if proc.returncode != 0:
+            raise SandboxUnavailable(proc.stderr.strip() or f"docker image inspect exited with {proc.returncode}")
 
     def run(
         self,
@@ -64,6 +85,8 @@ class DockerSandbox:
                 check=False,
                 timeout=timeout_s,
             )
+            if proc.returncode != 0 and any(m in proc.stderr.lower() for m in _DAEMON_DOWN):
+                raise SandboxUnavailable(proc.stderr.strip())
             return SandboxResult(
                 proc.returncode, proc.stdout + proc.stderr, False, time.monotonic() - start
             )
