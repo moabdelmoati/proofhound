@@ -32,7 +32,7 @@ from proofhound.core.harness.agent import (
 )
 from proofhound.core.harness.check import summarize_failure
 from proofhound.core.llm.client import Completion
-from proofhound.core.models import ChangedFunction, Finding, Severity
+from proofhound.core.models import ChangedFunction, Finding, Severity, kind_matches_class
 
 DATA = Path("training/data")
 CASES = Path("training/cases")
@@ -95,12 +95,10 @@ def confirmed_kind(adapter: JavaScriptAdapter, case: str, finding: Finding) -> s
     log = CASES / case / "out" / finding.id / "fuzz.log"
     if not log.is_file():
         return None
+    if not finding.vuln_class:
+        return None
     for report in adapter.parse_reports(log.read_text(encoding="utf-8", errors="replace")):
-        if not report.is_vulnerability:
-            continue
-        kind = report.kind.lower().replace(" ", "-")  # as triage matches crash kind to class
-        vuln_class = (finding.vuln_class or "").lower()
-        if vuln_class and (vuln_class in kind or kind in vuln_class):
+        if report.is_vulnerability and kind_matches_class(report.kind, finding.vuln_class):
             return report.kind
     return None
 

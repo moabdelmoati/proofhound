@@ -163,19 +163,21 @@ class HitAdapter(JavaScriptAdapter):
 
 
 class FakeFuzzer:
-    def __init__(self, crash: bool):
+    def __init__(self, crash: bool, kind: str = "Command Injection"):
         self.crash = crash
+        self.kind = kind
 
     def run(self, job):
-        crashes = [Crash(finding_id=job.finding.id, kind="Command Injection", input_path=Path("c"),
+        crashes = [Crash(finding_id=job.finding.id, kind=self.kind, input_path=Path("c"),
                          stack_trace="", signature="s", sink_location="lib/target.js:2:3",
                          reproduced=3)] if self.crash else []
-        return FuzzOutcome(crashes=crashes)
+        confirmed = self.crash and self.kind == "Command Injection"  # the finding is command injection
+        return FuzzOutcome(crashes=crashes, confirmed=confirmed)
 
 
-def _tools(tmp_path, hits=1, crash=True) -> AgentTools:
+def _tools(tmp_path, hits=1, crash=True, kind="Command Injection") -> AgentTools:
     return AgentTools(repo=tmp_path, commit="abc", adapter=HitAdapter(), analyzer=FakeAnalyzer(),
-                      sandbox=FakeSandbox(hits), fuzzer=FakeFuzzer(crash), out=tmp_path / "out")
+                      sandbox=FakeSandbox(hits), fuzzer=FakeFuzzer(crash, kind), out=tmp_path / "out")
 
 
 def test_fuzzer_is_refused_until_the_harness_reaches_the_target(tmp_path):
@@ -195,6 +197,18 @@ def test_reached_and_confirmed_is_proven(tmp_path):
     assert tools.check_harness("f1")["reached"] is True
     assert tools.run_fuzzer("f1")["confirmed"] is True
     assert tools.outcomes["f1"].proven
+
+
+def test_a_crash_of_another_class_does_not_prove_the_finding(tmp_path):
+    tools = _tools(tmp_path, kind="Prototype Pollution")
+    tools.run_sast()
+    tools.write_harness("f1", HARNESS)
+    tools.check_harness("f1")
+    result = tools.run_fuzzer("f1")
+    assert result["confirmed"] is False
+    assert result["crashes"][0]["kind"] == "Prototype Pollution"  # still reported as evidence
+    assert not tools.outcomes["f1"].proven
+    assert _finding_result(tools.outcomes["f1"], "finished").status == FindingStatus.NOT_CONFIRMED
 
 
 def test_rewriting_a_harness_keeps_an_earlier_proof_but_regates_the_fuzzer(tmp_path):

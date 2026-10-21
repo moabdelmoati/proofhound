@@ -19,7 +19,7 @@ from proofhound.core.fuzzing.fuzzer import FuzzerAgent, FuzzJob
 from proofhound.core.fuzzing.sandbox import TARGET, DockerSandbox
 from proofhound.core.harness.agent import extract_harness_code
 from proofhound.core.harness.check import check_harness
-from proofhound.core.models import Crash, Finding
+from proofhound.core.models import Crash, Finding, kind_matches_class
 
 MAX_ERROR_CHARS = 3000
 
@@ -36,7 +36,7 @@ class FindingOutcome:
 
     @property
     def confirmed(self) -> bool:
-        return bool(self.crashes)
+        return any(kind_matches_class(c.kind, self.finding.vuln_class) for c in self.crashes)
 
     @property
     def proven(self) -> bool:
@@ -130,9 +130,10 @@ class AgentTools:
             FuzzJob(outcome.finding, self.repo, self._workdir(finding_id), self.fuzz_time_s)
         )
         outcome.fuzz_runs += 1
-        outcome.crashes = result.crashes or outcome.crashes  # a later empty run keeps a proof
+        if result.confirmed or not outcome.confirmed:  # a later run never replaces a proof
+            outcome.crashes = result.crashes or outcome.crashes
         return {
-            "confirmed": bool(result.crashes),
+            "confirmed": result.confirmed,
             "crashes": [
                 {"kind": c.kind, "sink_location": c.sink_location, "reproduced": c.reproduced}
                 for c in result.crashes

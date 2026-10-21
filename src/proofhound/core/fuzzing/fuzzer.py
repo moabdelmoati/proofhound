@@ -1,6 +1,8 @@
 """Runs the fuzzer in the sandbox, collects bug-detector reports, and replays each crash input.
 
-Only security bug-detector reports that reproduce on every replay become confirmed `Crash`es.
+Security bug-detector reports that reproduce on every replay become `Crash`es. Only a crash whose
+detector matches the finding's vulnerability class confirms the finding: a command-injection crash
+is a real bug, but it does not prove a ReDoS finding in the same function.
 """
 
 import hashlib
@@ -11,7 +13,7 @@ from proofhound.core.adapters.base import FuzzerReport, LanguageAdapter
 from proofhound.core.agent import Agent
 from proofhound.core.datalog.logger import AttemptLogger, case_id
 from proofhound.core.fuzzing.sandbox import DockerSandbox, SandboxResult
-from proofhound.core.models import Crash, Finding
+from proofhound.core.models import Crash, Finding, kind_matches_class
 
 
 @dataclass
@@ -24,9 +26,10 @@ class FuzzJob:
 
 @dataclass
 class FuzzOutcome:
-    crashes: list[Crash] = field(default_factory=list)
+    crashes: list[Crash] = field(default_factory=list)  # every reproduced security crash
     other_reports: list[FuzzerReport] = field(default_factory=list)  # exceptions, timeouts
     run: SandboxResult | None = None
+    confirmed: bool = False  # some crash reproduced under the detector for the finding's class
 
 
 class FuzzerAgent(Agent[FuzzJob, FuzzOutcome]):
@@ -57,8 +60,10 @@ class FuzzerAgent(Agent[FuzzJob, FuzzOutcome]):
             crash.reproduced = self._replay(data, report)
             if crash.reproduced == self.replays:
                 outcome.crashes.append(crash)
-                if self.attempt_logger is not None:
-                    self.attempt_logger.mark_crash_confirmed(data.finding.id, case_id(data.target))
+                if not outcome.confirmed and kind_matches_class(crash.kind, data.finding.vuln_class):
+                    outcome.confirmed = True
+                    if self.attempt_logger is not None:
+                        self.attempt_logger.mark_crash_confirmed(data.finding.id, case_id(data.target))
             else:
                 outcome.other_reports.append(report)
         return outcome

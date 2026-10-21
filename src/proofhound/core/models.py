@@ -57,6 +57,16 @@ class Crash(BaseModel):
     reproduced: int = 0  # successful re-runs of the crash input
 
 
+def kind_matches_class(kind: str, vuln_class: str | None) -> bool:
+    """Whether a bug detector's kind ("Command Injection") matches a finding's vulnerability class
+    ("command-injection"). A crash only confirms a finding of its own class; without a class there
+    is nothing to check against."""
+    if not vuln_class:
+        return True
+    kind = kind.lower().replace(" ", "-")
+    return vuln_class.lower() in kind or kind in vuln_class.lower()
+
+
 class TriageResult(BaseModel):
     crash: Crash
     confidence: float = Field(ge=0.0, le=1.0)

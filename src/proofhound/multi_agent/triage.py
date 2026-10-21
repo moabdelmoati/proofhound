@@ -9,7 +9,7 @@ estimate are added later and only refine the `cvss`/`pov_path` fields, not this 
 
 from dataclasses import dataclass
 
-from proofhound.core.models import Crash, FindingStatus, Severity
+from proofhound.core.models import Crash, FindingStatus, Severity, kind_matches_class
 
 # Prior confidence from SAST severity alone (a candidate, before any execution evidence).
 _SAST_PRIOR = {
@@ -27,14 +27,6 @@ class Fusion:
     rationale: str
 
 
-def _class_matches(vuln_class: str | None, crash: Crash) -> bool:
-    """Whether a crash's bug-detector kind matches the finding's vulnerability class."""
-    if not vuln_class:
-        return True
-    kind = crash.kind.lower().replace(" ", "-")
-    return vuln_class.lower() in kind or kind in vuln_class.lower()
-
-
 def fuse(
     severity: Severity,
     vuln_class: str | None,
@@ -45,14 +37,15 @@ def fuse(
     """Combine SAST severity and the fuzzing outcome into a confidence in [0, 1]."""
     prior = _SAST_PRIOR.get(severity, 0.30)
 
-    if status == FindingStatus.CONFIRMED and crashes:
-        crash = crashes[0]
-        if _class_matches(vuln_class, crash):
-            score = max(CONFIRMED_FLOOR, prior)
-            return Fusion(score, f"fuzzing reproduced {crash.kind} at {crash.sink_location} "
-                                 f"({crash.reproduced}x); class matches SAST")
-        # Crash of a different class than SAST flagged: real bug, weaker link to this finding.
-        return Fusion(0.70, f"fuzzing reproduced {crash.kind}, but SAST flagged {vuln_class}")
+    matching = next((c for c in crashes if kind_matches_class(c.kind, vuln_class)), None)
+    if status == FindingStatus.CONFIRMED and matching is not None:
+        score = max(CONFIRMED_FLOOR, prior)
+        return Fusion(score, f"fuzzing reproduced {matching.kind} at {matching.sink_location} "
+                             f"({matching.reproduced}x); class matches SAST")
+    if crashes and matching is None:
+        # A reproduced crash of a different class than SAST flagged: a real bug, but it does not
+        # confirm this finding, so the finding is not CONFIRMED and gets a weaker score.
+        return Fusion(0.70, f"fuzzing reproduced {crashes[0].kind}, but SAST flagged {vuln_class}")
 
     if status == FindingStatus.NOT_CONFIRMED:
         # Fuzzing ran and found nothing: lower the prior, more so the longer it ran clean.

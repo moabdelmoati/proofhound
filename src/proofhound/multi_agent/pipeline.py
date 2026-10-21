@@ -107,7 +107,7 @@ class Pipeline:
                 finding=finding, status=FindingStatus.ERROR, harness=harness,
                 tokens_used=tokens, detail=f"fuzzer: {e}", duration_s=time.monotonic() - start,
             )
-        status = FindingStatus.CONFIRMED if outcome.crashes else FindingStatus.NOT_CONFIRMED
+        status = FindingStatus.CONFIRMED if outcome.confirmed else FindingStatus.NOT_CONFIRMED
         fusion = fuse(
             finding.severity, finding.vuln_class, status, outcome.crashes,
             self.settings.budgets.fuzz_time_per_target_s,

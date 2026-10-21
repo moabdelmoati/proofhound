@@ -177,7 +177,7 @@ def main() -> None:
             confirmed = False
             if harness is not None and not args.no_fuzz:
                 job = FuzzJob(finding, dest / "repo", out, settings.budgets.fuzz_time_per_target_s)
-                confirmed = bool(fuzzer.run(job).crashes)
+                confirmed = fuzzer.run(job).confirmed
         except Exception as e:
             if is_quota_error(e):
                 print(f"every API key is out of quota ({e}); stopping — rerun later to resume")

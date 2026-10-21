@@ -119,6 +119,16 @@ def test_fusion_class_mismatch_is_medium():
     assert 0.5 < result.confidence < 0.9
 
 
+def test_fusion_keeps_a_mismatched_crash_as_medium_evidence_when_not_confirmed():
+    from proofhound.core.models import Crash, FindingStatus, Severity
+    from proofhound.multi_agent.triage import fuse
+
+    crash = Crash(finding_id="f", kind="Command Injection", input_path=Path("x"),
+                  stack_trace="", signature="s", sink_location="a.js:1:1", reproduced=3)
+    result = fuse(Severity.HIGH, "redos", FindingStatus.NOT_CONFIRMED, [crash], 30)
+    assert 0.5 < result.confidence < 0.9
+
+
 def test_attempt_logger_marks_only_the_given_case(tmp_path):
     # Finding ids hash rule, path and position, so two cases can share one.
     log = AttemptLogger(tmp_path / "a.jsonl")
