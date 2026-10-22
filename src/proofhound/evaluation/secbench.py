@@ -65,6 +65,22 @@ def load_case(secbench: Path, vuln_class: str, case_id: str) -> SecBenchCase:
     )
 
 
+def _resolve_sink(sink: str, package_root: Path) -> str:
+    """SecBench's sink is often just `file.js:line:col` even when the real file lives deeper
+    (e.g. `packages/bignumber/src.ts/fixednumber.js`). If the top-level path is missing, search
+    the package for the exact basename; a single JS/TS file match wins. Returns the input
+    unchanged when the path exists, nothing is found, or several files share the name."""
+    if not sink:
+        return sink
+    rel, _, pos = sink.partition(":")
+    if (package_root / rel).exists() or "/" in rel:
+        return sink
+    matches = [p for p in package_root.rglob(rel) if p.is_file() and "node_modules" not in p.parts]
+    if len(matches) != 1:
+        return sink
+    return matches[0].relative_to(package_root).as_posix() + (f":{pos}" if pos else "")
+
+
 def _git(repo: Path, *args: str) -> str:
     return subprocess.run(
         ["git", "-C", str(repo), "-c", "core.autocrlf=false", *args],
@@ -119,6 +135,10 @@ def build_case(
             fixed = _unpack(sandbox, dest, case.package, case.fixed_version, "pkg-fixed")
         except RuntimeError:
             fixed = None
+    resolved = _resolve_sink(case.sink, vulnerable)
+    if resolved != case.sink:
+        case.sink = resolved
+
     if fixed is not None:
         diff = subprocess.run(
             ["git", "diff", "--no-index", "--numstat", str(fixed), str(vulnerable)],
@@ -141,7 +161,11 @@ def build_case(
         _replace_tree(repo, fixed)
     else:
         _replace_tree(repo, vulnerable)
-        (repo / case.sink_file).unlink()
+        sink_path = repo / case.sink_file
+        if sink_path.exists():
+            sink_path.unlink()  # "introduce" mode: commit B is the one that adds the sink file
+        # If the sink file is missing we still have a usable repo for the "reached" check, so
+        # fall through rather than fail the whole case here.
     (repo / ".gitignore").write_text("node_modules/\npackage-lock.json\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "base")
