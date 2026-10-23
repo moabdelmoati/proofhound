@@ -79,6 +79,8 @@ def main() -> None:
     ap.add_argument("--shard", default="0/1", help="K/N: take every N-th candidate starting at K.")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--no-fuzz", action="store_true", help="Skip crash confirmation of reached harnesses.")
+    ap.add_argument("--retry-build-errors", default=True, action=argparse.BooleanOptionalAction,
+                    help="Retry cases that previously failed with build_or_analyze_error (default: true).")
     args = ap.parse_args()
 
     from dotenv import load_dotenv
@@ -105,11 +107,14 @@ def main() -> None:
     progress_path = args.data_dir / f"distill_progress_{tag}.jsonl"
     logger = AttemptLogger(args.data_dir / f"distill_attempts_{tag}.jsonl")
 
-    done = {
-        json.loads(line)["case"]
-        for p in args.data_dir.glob("distill_progress_*.jsonl")
-        for line in p.read_text(encoding="utf-8").splitlines() if line.strip()
-    }
+    done = set()
+    for p in args.data_dir.glob("distill_progress_*.jsonl"):
+        for line in p.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            entry = json.loads(line)
+            if not args.retry_build_errors or entry.get("status") != "build_or_analyze_error":
+                done.add(entry["case"])
     excluded = eval_packages(args.benchmark)
     todo = [c for i, c in enumerate(candidates(args.secbench, args.classes, args.seed)) if i % shards == shard]
     todo = [c for c in todo if c[1] not in done]

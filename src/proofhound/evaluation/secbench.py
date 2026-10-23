@@ -10,8 +10,10 @@ ProofHound scans commits, but SecBench.js gives a vulnerable package version. Ea
 """
 
 import json
+import os
 import re
 import shutil
+import stat
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -107,10 +109,22 @@ def _unpack(sandbox: DockerSandbox, workdir: Path, package: str, version: str, d
     return workdir / dest
 
 
+def _rmtree(path: Path) -> None:
+    def _unlock(func, p, _):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except OSError:
+            pass
+
+    if path.exists():
+        shutil.rmtree(path, onexc=_unlock)
+
+
 def _replace_tree(repo: Path, source: Path) -> None:
     for item in repo.iterdir():
         if item.name != ".git":
-            shutil.rmtree(item) if item.is_dir() else item.unlink()
+            _rmtree(item) if item.is_dir() else item.unlink(missing_ok=True)
     shutil.copytree(source, repo, dirs_exist_ok=True)
 
 
@@ -123,7 +137,7 @@ def build_case(
     (a package must appear in only one split — never both — to avoid leakage).
     """
     sandbox = sandbox or DockerSandbox(SandboxSettings())
-    shutil.rmtree(dest, ignore_errors=True)
+    _rmtree(dest)
     dest.mkdir(parents=True)
     vulnerable = _unpack(sandbox, dest, case.package, case.version, "pkg-vulnerable")
 
@@ -142,7 +156,7 @@ def build_case(
     if fixed is not None:
         diff = subprocess.run(
             ["git", "diff", "--no-index", "--numstat", str(fixed), str(vulnerable)],
-            capture_output=True, text=True, check=False,  # git diff --no-index returns 1 on diff
+            capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,  # git diff --no-index returns 1 on diff
         ).stdout
         changed = sum(
             int(a) + int(d) for a, d, *_ in (line.split("\t") for line in diff.splitlines())
@@ -173,12 +187,12 @@ def build_case(
     _replace_tree(repo, vulnerable)
     (repo / ".gitignore").write_text("node_modules/\npackage-lock.json\n")
     _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "-m", f"{case.package}@{case.version}")
+    _git(repo, "commit", "-q", "--allow-empty", "-m", f"{case.package}@{case.version}")
     commit = _git(repo, "rev-parse", "HEAD").strip()
 
     _npm(sandbox, repo, "npm install -q --omit=dev --ignore-scripts --no-audit --no-fund")
     for tmp in ("pkg-vulnerable", "pkg-fixed"):
-        shutil.rmtree(dest / tmp, ignore_errors=True)
+        _rmtree(dest / tmp)
 
     manifest = {
         **asdict(case),
