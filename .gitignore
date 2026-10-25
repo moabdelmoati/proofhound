@@ -6,15 +6,34 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 node_modules/
-runs/
 corpus/
-training/data/*
-!training/data/.gitkeep
 vendor/
 benchmark/cases/*/repo/
 benchmark/cases/*/pkg-*/
 benchmark/cases/*/.out/
-runs/
 training/cases/
 models/*.zip
 models/harness-adapter*/
+
+# Local-only staging and trash
+.trash_cleanup/
+.kaggle_upload/
+
+# Eval runs: ignore large fuzz corpora and per-finding harness output,
+# but keep the small summary + failure analysis + the attempts JSONL
+# so analysis is reproducible from git.
+runs/*
+!runs/compare-v4-full/
+runs/compare-v4-full/*
+!runs/compare-v4-full/summary.json
+!runs/compare-v4-full/attempts_*.jsonl
+!runs/compare-v4-full/failure_analysis.md
+!runs/compare-v4-full/failure_analysis.csv
+!runs/compare-v4-full/target_findings.jsonl
+
+# Training data: ignore raw trajectories (large), keep built datasets
+training/data/*
+!training/data/.gitkeep
+!training/data/distill-v5-chatml.jsonl
+!training/data/distill-v5-promptcompletion.jsonl
+

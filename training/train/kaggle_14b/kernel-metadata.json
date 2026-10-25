@@ -1,0 +1,18 @@
+{
+  "id": "ebbrewqvqv/proofhound-harness-14b-v5",
+  "title": "proofhound-harness-14b-v5",
+  "code_file": "kaggle_train_14b_v5.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "machine_shape": "NvidiaTeslaP100",
+  "dataset_sources": [
+    "ebbrewqvqv/proofhound-harness-data"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

@@ -1,0 +1,25 @@
+{
+  "description": "Seed inputs that trigger catastrophic regex backtracking. Written to the Jazzer corpus directory before fuzzing so libFuzzer starts from inputs that reliably force exponential matching.",
+  "seeds": [
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "((((((((((((((((((((((((((((((((((((((((",
+    "))))))))))))))))))))))))))))))))))))))))",
+    "ababababababababababababababababababababab!",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1",
+    "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+    "....................................................................",
+    "||||||||||||||||||||||||||||||||||||||||||||",
+    "https://a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a/",
+    "<a><a><a><a><a><a><a><a><a><a><a><a><a><a><a><a><a><a><a><a>",
+    "aAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaA1",
+    "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n",
+    "foo@bar.com,foo@bar.com,foo@bar.com,foo@bar.com,foo@bar.com!",
+    "/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*/*",
+    "{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX",
+    "ababababababababababababababababababababababababab"
+  ]
+}
