@@ -76,6 +76,14 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--progress-every", type=int, default=None, metavar="N",
                     help="Print a running summary after every N cases.")
     ap.add_argument("--no-fuzz", action="store_true", help="Stop at coverage; skip crash confirmation.")
+    ap.add_argument("--class-seeds", action=argparse.BooleanOptionalAction, default=True,
+                    help="Seed Jazzer corpus with class-specific payloads (default true).")
+    ap.add_argument("--rejection-sampling", action=argparse.BooleanOptionalAction, default=False,
+                    help="Generate harnesses using rejection sampling across temperatures.")
+    ap.add_argument("--call-chain-v2", dest="call_chain_v2", action="store_true", default=True,
+                    help="Use enriched call chain with arg types and preconditions (default).")
+    ap.add_argument("--call-chain-v1", "--no-call-chain-v2", dest="call_chain_v2", action="store_false",
+                    help="Use legacy v1 call chain format.")
     args = ap.parse_args(argv)
 
     from dotenv import load_dotenv
@@ -93,6 +101,9 @@ def main(argv: list[str] | None = None) -> None:
     from proofhound.core.llm.client import build_client
 
     settings = load_settings(args.config)
+    settings.harness.class_seeds = args.class_seeds
+    settings.harness.rejection_sampling = args.rejection_sampling
+    settings.harness.call_chain_v2 = args.call_chain_v2
     missing = [k for k in args.models if k not in settings.models]
     if missing:
         sys.exit(f"unknown model(s) {missing}; available: {', '.join(settings.models)}")
@@ -114,7 +125,9 @@ def main(argv: list[str] | None = None) -> None:
             client=build_client(key, cfg), model=cfg.model or key, adapter=adapter,
             sandbox=sandbox, settings=settings.harness, logger=loggers[key],
         )
-        fuzzers[key] = FuzzerAgent(sandbox, adapter, attempt_logger=loggers[key])
+        fuzzers[key] = FuzzerAgent(
+            sandbox, adapter, attempt_logger=loggers[key], class_seeds=args.class_seeds,
+        )
 
     case_dirs = sorted(
         d for d in args.cases.iterdir() if (d / "case.yaml").exists() and (d / "repo").exists()
@@ -143,9 +156,12 @@ def main(argv: list[str] | None = None) -> None:
                 before = len(loggers[key].read())
                 start = time.monotonic()
                 try:
-                    harness = agents[key].produce(finding, repo, out)
-                    confirmed = False
-                    if harness is not None and not args.no_fuzz:
+                    if args.rejection_sampling:
+                        harness = agents[key].produce_with_sampling(finding, repo, out)
+                    else:
+                        harness = agents[key].produce(finding, repo, out)
+                    confirmed = getattr(harness, "confirmed", False)
+                    if not confirmed and harness is not None and not args.no_fuzz and harness.reached_target:
                         job = FuzzJob(finding, repo, out, settings.budgets.fuzz_time_per_target_s)
                         confirmed = fuzzers[key].run(job).confirmed
                 except SandboxUnavailable as e:
@@ -163,7 +179,7 @@ def main(argv: list[str] | None = None) -> None:
                     "syntax_ok": any(a.syntax_ok for a in attempts),
                     "loaded": any(a.loaded for a in attempts),
                     "reached": any(a.reached for a in attempts),
-                    "confirmed": confirmed,
+                    "confirmed": confirmed or any(a.crash_confirmed for a in attempts),
                     "tokens": sum(a.input_tokens + a.output_tokens for a in attempts),
                     "seconds": round(time.monotonic() - start, 1),
                 }

@@ -13,6 +13,7 @@ from proofhound.core.adapters.base import FuzzerReport, LanguageAdapter
 from proofhound.core.agent import Agent
 from proofhound.core.datalog.logger import AttemptLogger, case_id
 from proofhound.core.fuzzing.sandbox import DockerSandbox, SandboxResult
+from proofhound.core.fuzzing.seeds import seed_corpus
 from proofhound.core.models import Crash, Finding, kind_matches_class
 
 
@@ -38,14 +39,19 @@ class FuzzerAgent(Agent[FuzzJob, FuzzOutcome]):
     def __init__(
         self, sandbox: DockerSandbox, adapter: LanguageAdapter, replays: int = 3,
         attempt_logger: AttemptLogger | None = None,
+        class_seeds: bool = True,
     ):
         self.sandbox = sandbox
         self.adapter = adapter
         self.replays = replays
         self.attempt_logger = attempt_logger
+        self.class_seeds = class_seeds
 
     def run(self, data: FuzzJob) -> FuzzOutcome:
-        (data.out / "corpus").mkdir(parents=True, exist_ok=True)
+        corpus = data.out / "corpus"
+        corpus.mkdir(parents=True, exist_ok=True)
+        if self.class_seeds and data.finding.vuln_class:
+            seed_corpus(corpus, data.finding.vuln_class)
         result = self.sandbox.run(
             self.adapter.fuzz_command(data.time_s), data.target, data.out,
             timeout_s=data.time_s + 60,

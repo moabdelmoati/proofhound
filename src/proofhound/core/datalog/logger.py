@@ -33,6 +33,7 @@ class AttemptRecord:
     output_tokens: int = 0
     reasoning_tokens: int = 0  # part of output_tokens
     stop_reason: str | None = None  # "length" = the reply hit the output token limit
+    temperature: float | None = None
     timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
