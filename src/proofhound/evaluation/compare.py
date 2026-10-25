@@ -73,6 +73,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--models", nargs="+", required=True, help="Model keys from the config.")
     ap.add_argument("--out", default="runs/compare", type=Path)
     ap.add_argument("--max-cases", type=int, default=None, help="Only the first N cases (smoke test).")
+    ap.add_argument("--progress-every", type=int, default=None, metavar="N",
+                    help="Print a running summary after every N cases.")
     ap.add_argument("--no-fuzz", action="store_true", help="Stop at coverage; skip crash confirmation.")
     args = ap.parse_args(argv)
 
@@ -122,6 +124,7 @@ def main(argv: list[str] | None = None) -> None:
     overall = {k: Tally() for k in args.models}
     by_class: dict[tuple[str, str], Tally] = defaultdict(Tally)
     records: list[dict] = []
+    cases_done = 0
 
     for case_dir in case_dirs:
         manifest = yaml.safe_load((case_dir / "case.yaml").read_text(encoding="utf-8"))
@@ -170,6 +173,14 @@ def main(argv: list[str] | None = None) -> None:
                 best = next((s for s in reversed(STAGES) if record[s]), "failed")
                 print(f"  [{key}] {best} in {record['attempts']} attempt(s) | "
                       f"{record['tokens']:,} tokens | {record['seconds']}s")
+
+        cases_done += 1
+        if args.progress_every and cases_done % args.progress_every == 0:
+            print(f"\n{'='*60}")
+            print(f"PROGRESS — {cases_done}/{len(case_dirs)} cases done")
+            print(f"{'='*60}")
+            _print_table([overall[k].row(model=k) for k in args.models])
+            print()
 
     rows = [overall[k].row(model=k) for k in args.models]
     class_rows = [t.row(model=k, vuln_class=c) for (k, c), t in sorted(by_class.items())]
