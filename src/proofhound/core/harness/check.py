@@ -12,7 +12,8 @@ from pathlib import Path
 
 from proofhound.core.adapters.base import LanguageAdapter
 from proofhound.core.fuzzing.sandbox import OUT, DockerSandbox
-from proofhound.core.models import ChangedFunction
+from proofhound.core.fuzzing.seeds import seed_corpus
+from proofhound.core.models import ChangedFunction, kind_matches_class
 
 FAILURE_LIMIT = 2000  # characters of failure text handed back to the model
 
@@ -43,6 +44,7 @@ class HarnessCheck:
     syntax_ok: bool = False
     loaded: bool = False
     reached: bool = False
+    confirmed: bool = False
     failed_stage: str | None = None  # syntax | probe | reach | sandbox
     error: str = ""
     sandbox_error: Exception | None = None  # infrastructure failure; callers re-raise it
@@ -55,12 +57,19 @@ class HarnessCheck:
 def check_harness(
     sandbox: DockerSandbox, adapter: LanguageAdapter, function: ChangedFunction,
     target: Path, out: Path, probe_time_s: int,
+    vuln_class: str | None = None,
+    class_seeds: bool = True,
+    fuzz_inline: bool = False,
+    fuzz_time_s: int | None = None,
 ) -> HarnessCheck:
     """Check `out/harness.js` against `function` in `target`. Never raises: a sandbox failure is
     returned in `sandbox_error` with the stages that completed before it."""
     check = HarnessCheck()
     # Jazzer.js requires the corpus directory to exist before the probe run.
-    (out / "corpus").mkdir(parents=True, exist_ok=True)
+    corpus = out / "corpus"
+    corpus.mkdir(parents=True, exist_ok=True)
+    if class_seeds and vuln_class:
+        seed_corpus(corpus, vuln_class)
     try:
         syntax = sandbox.run(["node", "--check", f"{OUT}/harness.js"], target, out, timeout_s=30)
         check.syntax_ok = syntax.exit_code == 0 and not syntax.timed_out
@@ -76,6 +85,8 @@ def check_harness(
         )
         (out / "harness-probe.log").write_text(probe.output, encoding="utf-8")
         reports = adapter.parse_reports(probe.output)
+        if vuln_class and any(r.is_vulnerability and kind_matches_class(r.kind, vuln_class) for r in reports):
+            check.confirmed = True
         check.loaded = (
             not probe.timed_out
             and not any(r.kind == "Uncaught Exception" for r in reports)
@@ -101,6 +112,15 @@ def check_harness(
                 "Coverage did not record execution of the target function." if hits is not None
                 else "No Jazzer.js coverage report was produced; check that the target loads."
             )
+        elif fuzz_inline and not check.confirmed:
+            fuzz_s = fuzz_time_s or probe_time_s
+            fuzz_run = sandbox.run(
+                adapter.fuzz_command(fuzz_s), target, out, timeout_s=fuzz_s + 45,
+            )
+            (out / "fuzz-inline.log").write_text(fuzz_run.output, encoding="utf-8")
+            fuzz_reports = adapter.parse_reports(fuzz_run.output)
+            if vuln_class and any(r.is_vulnerability and kind_matches_class(r.kind, vuln_class) for r in fuzz_reports):
+                check.confirmed = True
     except Exception as e:
         check.failed_stage = "sandbox"
         check.error = f"{type(e).__name__}: {e}"

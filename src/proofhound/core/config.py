@@ -20,6 +20,9 @@ class HarnessSettings(BaseModel):
     small_model_repair_attempts: int = 2
     large_model_repair_attempts: int = 2
     use_sast_hints: bool = True
+    class_seeds: bool = True
+    rejection_sampling: bool = False
+    call_chain_v2: bool = True
 
 
 class SingleAgentSettings(BaseModel):

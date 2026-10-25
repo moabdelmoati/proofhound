@@ -8,6 +8,7 @@ from proofhound.core.analysis.call_chain import extract_call_chain
 from proofhound.core.config import HarnessSettings
 from proofhound.core.datalog.logger import AttemptLogger, AttemptRecord, case_id, case_split
 from proofhound.core.fuzzing.sandbox import DockerSandbox
+from proofhound.core.fuzzing.seeds import seed_corpus
 from proofhound.core.harness.check import HarnessCheck, check_harness
 from proofhound.core.llm.client import Completion, LLMClient
 from proofhound.core.models import Finding, Harness
@@ -63,6 +64,11 @@ class HarnessAgent:
         if function is None:
             return None
 
+        corpus = out / "corpus"
+        corpus.mkdir(parents=True, exist_ok=True)
+        if getattr(self.settings, "class_seeds", True) and finding.vuln_class:
+            seed_corpus(corpus, finding.vuln_class)
+
         source_path = target / finding.file
         if not source_path.is_file():
             return None
@@ -71,7 +77,9 @@ class HarnessAgent:
         function_source = "\n".join(lines[max(0, function.start_line - 1):function.end_line])
         module = f"/work/target/{finding.file.as_posix()}"
         template = self.adapter.harness_template(module=module)
-        call_chain = extract_call_chain(target, finding)
+        call_chain = extract_call_chain(target, finding, v2=getattr(self.settings, "call_chain_v2", True))
+        if call_chain:
+            print(f"DEBUG [call_chain] {finding.id}:\n{call_chain}\n")
         prompt = build_prompt(
             finding, function_source, source, module, template, self.settings.use_sast_hints,
             call_chain=call_chain,
@@ -100,6 +108,8 @@ class HarnessAgent:
                 (out / "harness.js").write_text(code, encoding="utf-8")
                 check = check_harness(
                     self.sandbox, self.adapter, function, target, out, self.settings.probe_time_s,
+                    vuln_class=finding.vuln_class,
+                    class_seeds=getattr(self.settings, "class_seeds", True),
                 )
 
             self.logger.log(AttemptRecord(
@@ -107,9 +117,11 @@ class HarnessAgent:
                 vuln_class=finding.vuln_class, attempt=attempt, model=self.model,
                 prompt_version=PROMPT_VERSION, prompt=full_prompt, output=code,
                 syntax_ok=check.syntax_ok, loaded=check.loaded, reached=check.reached,
-                coverage_gain=check.reached, failed_stage=check.failed_stage,
+                coverage_gain=check.reached, crash_confirmed=check.confirmed,
+                failed_stage=check.failed_stage,
                 input_tokens=completion.input_tokens, output_tokens=completion.output_tokens,
                 reasoning_tokens=completion.reasoning_tokens, stop_reason=completion.stop_reason,
+                temperature=getattr(getattr(self.client, "cfg", None), "temperature", None),
             ))
 
             if check.sandbox_error is not None:
@@ -118,13 +130,127 @@ class HarnessAgent:
             if check.passed:
                 return Harness(
                     finding_id=finding.id, code=code, attempts=attempt, compiled=True,
-                    reached_target=True, produced_by="large",
+                    reached_target=True, confirmed=check.confirmed, produced_by="large",
                 )
             if not problem:
                 previous_code, previous_check = code, check
             previous_error = f"{check.failed_stage}: {check.error}"
 
         return None
+
+    def produce_with_sampling(
+        self, finding: Finding, target: Path, out: Path, temps: list[float] | None = None,
+    ) -> Harness | None:
+        """Generate up to 5 harnesses across temperatures. Stop on first confirmed crash.
+        Keep the best reached outcome if none confirms."""
+        if temps is None:
+            temps = [0.1, 0.3, 0.5, 0.7, 0.9]
+
+        function = finding.function
+        if function is None:
+            return None
+
+        corpus = out / "corpus"
+        corpus.mkdir(parents=True, exist_ok=True)
+        if getattr(self.settings, "class_seeds", True) and finding.vuln_class:
+            seed_corpus(corpus, finding.vuln_class)
+
+        source_path = target / finding.file
+        if not source_path.is_file():
+            return None
+        source = source_path.read_text(encoding="utf-8", errors="replace")
+        lines = source.splitlines()
+        function_source = "\n".join(lines[max(0, function.start_line - 1):function.end_line])
+        module = f"/work/target/{finding.file.as_posix()}"
+        template = self.adapter.harness_template(module=module)
+        call_chain = extract_call_chain(target, finding, v2=getattr(self.settings, "call_chain_v2", True))
+        if call_chain:
+            print(f"DEBUG [call_chain] {finding.id}:\n{call_chain}\n")
+        prompt = build_prompt(
+            finding, function_source, source, module, template, self.settings.use_sast_hints,
+            call_chain=call_chain,
+        )
+
+        orig_temp = getattr(getattr(self.client, "cfg", None), "temperature", None)
+        best_harness: Harness | None = None
+        best_rank = -1
+        best_code = ""
+        best_check = HarnessCheck()
+        best_attempt = 1
+
+        try:
+            for attempt_idx, temp in enumerate(temps, 1):
+                if hasattr(self.client, "cfg"):
+                    self.client.cfg.temperature = temp
+
+                completion = self.client.complete(SYSTEM_PROMPT, prompt)
+                self.tokens_used += completion.tokens_used
+                code = extract_harness_code(completion.text)
+
+                problem = reply_problem(completion, code)
+                if problem:
+                    check = HarnessCheck(failed_stage="no_harness", error=problem)
+                else:
+                    (out / "harness.js").write_text(code, encoding="utf-8")
+                    check = check_harness(
+                        self.sandbox, self.adapter, function, target, out, self.settings.probe_time_s,
+                        vuln_class=finding.vuln_class,
+                        class_seeds=getattr(self.settings, "class_seeds", True),
+                        fuzz_inline=True,
+                    )
+
+                self.logger.log(AttemptRecord(
+                    case=case_id(target), split=case_split(target), finding_id=finding.id,
+                    vuln_class=finding.vuln_class, attempt=attempt_idx, model=self.model,
+                    prompt_version=PROMPT_VERSION, prompt=prompt, output=code,
+                    syntax_ok=check.syntax_ok, loaded=check.loaded, reached=check.reached,
+                    coverage_gain=check.reached, crash_confirmed=check.confirmed,
+                    failed_stage=check.failed_stage,
+                    input_tokens=completion.input_tokens, output_tokens=completion.output_tokens,
+                    reasoning_tokens=completion.reasoning_tokens, stop_reason=completion.stop_reason,
+                    temperature=temp,
+                ))
+
+                if check.sandbox_error is not None:
+                    raise check.sandbox_error
+
+                # Rank: confirmed (4) > reached (3) > loaded (2) > syntax_ok (1)
+                if check.confirmed:
+                    rank = 4
+                elif check.reached:
+                    rank = 3
+                elif check.loaded:
+                    rank = 2
+                elif check.syntax_ok:
+                    rank = 1
+                elif not problem:
+                    rank = 0
+                else:
+                    rank = -1
+
+                if rank > best_rank:
+                    best_rank = rank
+                    best_code = code
+                    best_check = check
+                    best_attempt = attempt_idx
+                    best_harness = Harness(
+                        finding_id=finding.id, code=code, attempts=attempt_idx,
+                        compiled=check.syntax_ok, reached_target=check.reached,
+                        confirmed=check.confirmed, produced_by="large",
+                    )
+
+                # Short-circuit if a crash is confirmed
+                if check.confirmed:
+                    self.logger.mark_crash_confirmed(finding.id, case_id(target))
+                    break
+        finally:
+            if hasattr(self.client, "cfg"):
+                self.client.cfg.temperature = orig_temp
+
+        if best_code:
+            (out / "harness.js").write_text(best_code, encoding="utf-8")
+
+        return best_harness
 
 
 SINK_MARK = "// <-- SAST sink"

@@ -85,6 +85,9 @@ class FuncNode:
     end_line: int
     calls: list[str] = field(default_factory=list)   # callee names (bare)
     params: str = ""                                   # "(a, b, c)"
+    param_names: list[str] = field(default_factory=list)
+    arg_types: dict[str, str] = field(default_factory=dict)
+    preconditions: list[str] = field(default_factory=list)
     exported_as: str | None = None                     # "module.exports.run" or None
 
 
@@ -94,9 +97,230 @@ class ChainStep:
     call_expr: str    # how the caller invokes it: "run(input)" / "module.exports.run(input)"
     file: Path
     line: int
+    arg_types: dict[str, str] = field(default_factory=dict)
+    preconditions: list[str] = field(default_factory=list)
 
 
 # ── AST walker ─────────────────────────────────────────────────────────────────
+
+_ARRAY_METHODS = {
+    "forEach", "map", "filter", "reduce", "slice", "push", "pop", "shift",
+    "unshift", "concat", "join", "find", "findIndex", "some", "every", "splice",
+}
+
+_STRING_METHODS = {
+    "trim", "split", "replace", "replaceAll", "toLowerCase", "toUpperCase",
+    "substring", "substr", "charAt", "charCodeAt", "match", "search",
+    "startsWith", "endsWith", "indexOf", "lastIndexOf", "includes",
+}
+
+
+def _extract_param_names(params_node: Node | None) -> list[str]:
+    if not params_node:
+        return []
+    names = []
+    for child in params_node.children:
+        if child.type == "identifier":
+            names.append(_txt(child))
+        elif child.type == "assignment_pattern":
+            left = child.child_by_field_name("left")
+            if left and left.type == "identifier":
+                names.append(_txt(left))
+        elif child.type == "rest_pattern":
+            for sub in child.children:
+                if sub.type == "identifier":
+                    names.append(_txt(sub))
+                    break
+        elif child.type in ("object_pattern", "array_pattern"):
+            names.append(_txt(child))
+    return [n for n in names if n and n not in ("(", ")", ",")]
+
+
+def _infer_param_type(param: str, body_node: Node | None) -> str:
+    if not body_node:
+        return _infer_by_name(param)
+
+    is_array = False
+    is_function = False
+    is_string = False
+    is_number = False
+    is_object = False
+
+    def walk_usage(n: Node) -> None:
+        nonlocal is_array, is_function, is_string, is_number, is_object
+
+        if n.type == "call_expression":
+            fn = n.child_by_field_name("function")
+            args = n.child_by_field_name("arguments")
+            if fn:
+                fn_txt = _txt(fn)
+                if fn_txt == "Array.isArray" and args and param in _txt(args):
+                    is_array = True
+                elif fn_txt == param or fn_txt.endswith("." + param):
+                    is_function = True
+                elif fn.type == "member_expression":
+                    obj = fn.child_by_field_name("object")
+                    prop = fn.child_by_field_name("property")
+                    if obj and _txt(obj) == param and prop:
+                        prop_name = _txt(prop)
+                        if prop_name in _ARRAY_METHODS:
+                            is_array = True
+                        elif prop_name in _STRING_METHODS:
+                            is_string = True
+                        else:
+                            is_object = True
+
+        if n.type in ("for_of_statement", "for_in_statement"):
+            right = n.child_by_field_name("right")
+            if right and _txt(right) == param:
+                is_array = True
+
+        if n.type == "template_substitution":
+            if param in _txt(n):
+                is_string = True
+
+        if n.type == "binary_expression":
+            left = n.child_by_field_name("left")
+            right = n.child_by_field_name("right")
+            op = _txt(n.child_by_field_name("operator"))
+            txt_left, txt_right = _txt(left), _txt(right)
+
+            if op == "+" and (txt_left == param or txt_right == param):
+                if (left and left.type == "string") or (right and right.type == "string"):
+                    is_string = True
+                elif (left and left.type == "number") or (right and right.type == "number"):
+                    is_number = True
+
+            if op in ("==", "===", "!=", "!=="):
+                sub_txt = _txt(n)
+                if f"typeof {param}" in sub_txt or f"typeof({param})" in sub_txt:
+                    if '"string"' in sub_txt or "'string'" in sub_txt:
+                        is_string = True
+                    elif '"number"' in sub_txt or "'number'" in sub_txt:
+                        is_number = True
+                    elif '"function"' in sub_txt or "'function'" in sub_txt:
+                        is_function = True
+                    elif '"object"' in sub_txt or "'object'" in sub_txt:
+                        is_object = True
+
+            if op in ("-", "*", "/", "%"):
+                if txt_left == param or txt_right == param:
+                    is_number = True
+
+            if op in ("<", ">", "<=", ">="):
+                if (txt_left == param and right and right.type == "number") or (
+                    txt_right == param and left and left.type == "number"
+                ):
+                    is_number = True
+
+            if op == "in" and txt_right == param:
+                is_object = True
+
+        if n.type == "member_expression":
+            obj = n.child_by_field_name("object")
+            prop = n.child_by_field_name("property")
+            if obj and _txt(obj) == param and prop:
+                prop_name = _txt(prop)
+                if prop_name in _ARRAY_METHODS:
+                    is_array = True
+                elif prop_name in _STRING_METHODS:
+                    is_string = True
+                elif prop_name != "length":
+                    is_object = True
+
+        for child in n.children:
+            walk_usage(child)
+
+    walk_usage(body_node)
+
+    if is_array:
+        return "array"
+    if is_function:
+        return "function"
+    if is_string:
+        return "string"
+    if is_number:
+        return "number"
+    if is_object:
+        return "object"
+
+    return _infer_by_name(param)
+
+
+def _infer_by_name(name: str) -> str:
+    n = name.lower()
+    if n in ("cb", "callback", "fn", "done", "next", "resolve", "reject"):
+        return "function"
+    if any(k in n for k in ("opts", "options", "config", "settings", "params")):
+        return "object"
+    if any(k in n for k in ("arr", "list", "items", "lines", "files", "hosts")):
+        return "array"
+    if any(k in n for k in ("cmd", "command", "path", "file", "str", "name", "url", "ip", "host", "regex", "pattern", "dir")):
+        return "string"
+    if any(k in n for k in ("count", "timeout", "port", "len", "size", "index", "num")):
+        return "number"
+    return "unknown"
+
+
+def _clean_precondition(cond: str) -> str:
+    cond = cond.strip()
+    if cond.startswith("(") and cond.endswith(")"):
+        cond = cond[1:-1].strip()
+    m = re.match(r"^!\s*\((.+)\)$", cond)
+    if m:
+        return m.group(1).strip()
+    m = re.match(r"^!\s*([a-zA-Z_$][a-zA-Z0-9_$.]*)$", cond)
+    if m:
+        return m.group(1).strip()
+    cond = re.sub(
+        r"typeof\s+([a-zA-Z_$][a-zA-Z0-9_$.]*)\s*!==\s*('string'|\"string\")",
+        r"typeof \1 === \2",
+        cond,
+    )
+    return cond
+
+
+def _extract_preconditions(body_node: Node | None) -> list[str]:
+    if not body_node:
+        return []
+    preconds = []
+    statements = [c for c in body_node.children if c.type not in ("{", "}")]
+    for st in statements[:5]:
+        if st.type == "if_statement":
+            cond = st.child_by_field_name("condition")
+            conseq = st.child_by_field_name("consequence")
+            conseq_text = _txt(conseq)
+            is_guard = any(k in conseq_text for k in ("return", "throw", "reject", "exit"))
+            if cond and (is_guard or "assert" in _txt(st) or "typeof" in _txt(cond) or "isArray" in _txt(cond)):
+                text = _clean_precondition(_txt(cond))
+                if text and text not in preconds:
+                    preconds.append(text)
+        elif st.type == "expression_statement":
+            txt = _txt(st).strip().rstrip(";")
+            m = re.search(r"assert(?:\.\w+)?\((.*)\)", txt)
+            if m:
+                preconds.append(m.group(1).strip())
+    return preconds
+
+
+def _find_sink_call_on_line(root: Node, line: int) -> str | None:
+    found: str | None = None
+
+    def walk(n: Node) -> None:
+        nonlocal found
+        if n.start_point.row + 1 == line and n.type == "call_expression":
+            fn_node = n.child_by_field_name("function")
+            if fn_node:
+                txt = _txt(fn_node).split(".")[-1]
+                if txt not in {"require", "console"}:
+                    found = txt
+                    return
+        for c in n.children:
+            walk(c)
+
+    walk(root)
+    return found
+
 
 def _collect_functions(root: Node, source_lines: list[str]) -> list[FuncNode]:
     """Walk the AST and return one FuncNode per function definition."""
@@ -109,7 +333,14 @@ def _collect_functions(root: Node, source_lines: list[str]) -> list[FuncNode]:
             end = n.end_point.row + 1
             params_node = n.child_by_field_name("parameters")
             params = _txt(params_node) if params_node else "(data)"
-            fn = FuncNode(name=name, start_line=start, end_line=end, params=params)
+            param_names = _extract_param_names(params_node)
+            body_node = n.child_by_field_name("body")
+            arg_types = {p: _infer_param_type(p, body_node) for p in param_names}
+            preconditions = _extract_preconditions(body_node)
+            fn = FuncNode(
+                name=name, start_line=start, end_line=end, params=params,
+                param_names=param_names, arg_types=arg_types, preconditions=preconditions,
+            )
             nodes.append(fn)
         for child in n.children:
             walk(child)
@@ -324,8 +555,11 @@ def _bfs_chain(
         for callee in f.calls:
             caller_of.setdefault(callee, []).append(f.name)
 
-    # If sink is directly exported, chain is trivial
+    # If sink is directly exported (or a method on an exported constructor/class), chain is trivial
     if sink_func_name in exported:
+        return [sink_func_name]
+    cls_name = sink_func_name.split(".")[0] if "." in sink_func_name else None
+    if cls_name and cls_name in exported:
         return [sink_func_name]
 
     # BFS from sink upward toward exported functions
@@ -341,7 +575,8 @@ def _bfs_chain(
                 continue
             seen.add(caller)
             new_path = [caller] + path
-            if caller in exported:
+            caller_cls = caller.split(".")[0] if "." in caller else None
+            if caller in exported or (caller_cls and caller_cls in exported):
                 return new_path
             queue.append(new_path)
     return None
@@ -349,7 +584,7 @@ def _bfs_chain(
 
 # ── public API ────────────────────────────────────────────────────────────────
 
-def extract_call_chain(repo: Path, finding: Finding) -> str:
+def extract_call_chain(repo: Path, finding: Finding, v2: bool = True) -> str:
     """Return a prompt-ready call chain string, or "" if nothing useful found."""
     if finding.function is None:
         return ""
@@ -378,8 +613,57 @@ def extract_call_chain(repo: Path, finding: Finding) -> str:
         return ""
 
     chain_names = _bfs_chain(funcs, exported, sink_func.name)
-
     func_map = {f.name: f for f in funcs}
+
+    if v2:
+        sink_call = _find_sink_call_on_line(root, finding.line)
+        if chain_names:
+            v2_lines = ["Call chain:"]
+            for i, name in enumerate(chain_names):
+                fn = func_map.get(name)
+                short_name = name.split(".")[-1] if "." in name else name
+                if fn and fn.param_names:
+                    args_str = ", ".join(f"{p}: {fn.arg_types.get(p, 'unknown')}" for p in fn.param_names)
+                elif fn and fn.params:
+                    args_str = fn.params.strip("()")
+                else:
+                    args_str = "data: unknown"
+                step = f"  {i + 1}. {short_name}({args_str})"
+                if fn and fn.preconditions:
+                    step += f"  — precondition: {' && '.join(fn.preconditions)}"
+                if i == len(chain_names) - 1:
+                    if sink_call and sink_call != short_name:
+                        v2_lines.append(step)
+                        sink_args = "cmd: string, cb: function" if "exec" in sink_call else "args: unknown"
+                        v2_lines.append(f"  {i + 2}. {sink_call}({sink_args})  — sink")
+                        continue
+                    else:
+                        step += "  — sink"
+                v2_lines.append(step)
+            return "\n".join(v2_lines)
+
+        owner = _find_method_owner(source_str, sink_func.name, sink_func.start_line)
+        obj_exports = _scan_exports_object(source_str)
+        if owner and owner in obj_exports:
+            export_key = obj_exports[owner]
+            fn = func_map.get(sink_func.name)
+            short_name = sink_func.name.split(".")[-1]
+            if fn and fn.param_names:
+                args_str = ", ".join(f"{p}: {fn.arg_types.get(p, 'unknown')}" for p in fn.param_names)
+            else:
+                args_str = fn.params.strip("()") if fn and fn.params else "data: unknown"
+            step1 = f"  1. require(module).{export_key} (provides {owner})"
+            step2 = f"  2. {short_name}({args_str})"
+            if fn and fn.preconditions:
+                step2 += f"  — precondition: {' && '.join(fn.preconditions)}"
+            if sink_call and sink_call != short_name:
+                sink_args = "cmd: string, cb: function" if "exec" in sink_call else "args: unknown"
+                step3 = f"  3. {sink_call}({sink_args})  — sink"
+                return "\n".join(["Call chain:", step1, step2, step3])
+            else:
+                step2 += "  — sink"
+                return "\n".join(["Call chain:", step1, step2])
+
     lines: list[str] = [
         "## Call chain to reach the sink",
         f"The sink is at line {finding.line} inside `{sink_func.name}()`.",
