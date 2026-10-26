@@ -38,7 +38,13 @@ In `scripts/build_training_v6.py`, the builder was writing `"split": "train"` st
 
 ## 3. Kaggle Training Run (Job 2)
 
-- **Dataset Version:** Uploaded to `ebbrewqvqv/proofhound-harness-data` with message `"v6 clean: train split only"`.
-- **Kernel Push:** Pushed to `ebbrewqvqv/proofhound-harness-14b-v5` (Version 5) on dual T4 GPUs (`GpuT4x2`).
-- **Hyperparameters:** Unchanged from v5 baseline (EPOCHS=3, batch settings isolated to test data effect only).
-- **Current Status:** `KernelWorkerStatus.RUNNING`
+- **Dataset Version:** Uploaded clean dataset (107 examples, 0 leaks) to `ebbrewqvqv/proofhound-harness-data` with message `"v6 clean: train split only"`.
+- **Kernel Push:** Pushed version 5 to `ebbrewqvqv/proofhound-harness-14b-v5` on dual T4 GPUs (`GpuT4x2`).
+- **Hyperparameters:** Identical to v5 baseline (Qwen/Qwen2.5-Coder-14B-Instruct, MAX_LENGTH=2048, LORA_RANK=16, EPOCHS=3).
+- **Execution Progress:**
+  - Total Steps: 42 steps (3 epochs over 107 examples).
+  - Step 5: `loss = 0.8919`, `epoch = 0.37`
+  - Step 10: `loss = 0.7841`, `epoch = 0.75`
+  - Step 15: `loss = 0.6657`, `epoch = 1.08`
+  - Step 20: `loss = 0.5866`, `epoch = 1.45` (48% complete, loss converging smoothly)
+  - Current Status: `KernelWorkerStatus.RUNNING` (estimated completion at ~42 steps).
