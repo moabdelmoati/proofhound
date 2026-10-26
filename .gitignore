@@ -37,3 +37,5 @@ training/data/*
 !training/data/distill-v5-chatml.jsonl
 !training/data/distill-v5-promptcompletion.jsonl
 
+
+.claude/settings.local.json
