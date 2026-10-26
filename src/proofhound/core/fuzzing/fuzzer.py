@@ -16,6 +16,10 @@ from proofhound.core.fuzzing.sandbox import DockerSandbox, SandboxResult
 from proofhound.core.fuzzing.seeds import seed_corpus
 from proofhound.core.models import Crash, Finding, kind_matches_class
 
+# A ReDoS crash is confirmed by the input hanging, so its replay is bounded short and a sandbox
+# timeout (not a parsed detector report) counts as a reproduction.
+_REDOS_REPLAY_TIMEOUT_S = 15
+
 
 @dataclass
 class FuzzJob:
@@ -88,12 +92,20 @@ class FuzzerAgent(Agent[FuzzJob, FuzzOutcome]):
         )
 
     def _replay(self, data: FuzzJob, report: FuzzerReport) -> int:
+        # A ReDoS crash is a per-input hang, not a detector report: replaying the slow input makes
+        # the regression run hang too, so a sandbox timeout is its reproduction signal.
+        is_hang = "timeout" in report.kind.lower() or report.kind.lower().replace(" ", "") == "redos"
         reproduced = 0
         for _ in range(self.replays):
             result = self.sandbox.run(
                 self.adapter.replay_command(report.crash_file), data.target, data.out,
-                timeout_s=60,
+                timeout_s=_REDOS_REPLAY_TIMEOUT_S if is_hang else 60,
             )
-            if any(r.kind == report.kind for r in self.adapter.parse_reports(result.output)):
+            matched = any(r.kind == report.kind for r in self.adapter.parse_reports(result.output))
+            if is_hang:
+                # The slow input either hangs past the replay budget (sandbox kill) or trips the
+                # same per-input timeout again and exits with the report — both reproduce the ReDoS.
+                reproduced += result.timed_out or matched
+            elif matched:
                 reproduced += 1
         return reproduced

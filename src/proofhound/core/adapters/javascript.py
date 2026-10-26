@@ -110,10 +110,14 @@ class JavaScriptAdapter(LanguageAdapter):
         return HARNESS_TEMPLATE.replace("{module}", module)
 
     # Harnesses run in async mode (no --sync) so targets that return promises are awaited.
+    # -timeout reports a single input slower than PER_INPUT_TIMEOUT_S as a libFuzzer timeout.
+    # Without it, catastrophic regex backtracking (ReDoS) is invisible: libFuzzer's default
+    # per-input timeout is 1200s, which never fires inside the short -max_total_time budget.
     def fuzz_command(self, time_s: int) -> list[str]:
         return [
             "jazzer", HARNESS, f"{OUT}/corpus",
-            "--", f"-max_total_time={time_s}", f"-artifact_prefix={OUT}/",
+            "--", f"-max_total_time={time_s}", f"-timeout={PER_INPUT_TIMEOUT_S}",
+            f"-artifact_prefix={OUT}/",
         ]
 
     def replay_command(self, inputs: str) -> list[str]:
@@ -150,6 +154,9 @@ class JavaScriptAdapter(LanguageAdapter):
 
 HARNESS = f"{OUT}/harness.js"
 SECURITY_DETECTORS = {"Command Injection", "Path Traversal", "Prototype Pollution"}
+# A single fuzz input slower than this (seconds) is a libFuzzer timeout — our ReDoS crash signal.
+PER_INPUT_TIMEOUT_S = 10
+REDOS_KIND = "ReDoS"
 _HEADER = re.compile(r"^==\d+== (.+)$")
 _TIMEOUT = re.compile(r"ERROR: libFuzzer: timeout")
 _FRAME = re.compile(r"^\s+at ")
@@ -159,10 +166,23 @@ _ARTIFACT = re.compile(r"Test unit written to (\S+)")
 def parse_jazzer_output(output: str) -> list[FuzzerReport]:
     reports: list[FuzzerReport] = []
     current: FuzzerReport | None = None
+    last_artifact: str | None = None
     for line in output.splitlines():
+        if artifact := _ARTIFACT.search(line):
+            # libFuzzer writes the offending input before its report (timeout) or after it (crash).
+            last_artifact = Path(artifact.group(1)).name
+            if current is not None and current.crash_file is None:
+                current.crash_file = last_artifact
+            continue
+        # A per-input libFuzzer timeout = catastrophic backtracking = ReDoS. Its "==N== ERROR:
+        # libFuzzer: timeout" line also matches the header pattern, so test for the timeout first.
+        if _TIMEOUT.search(line):
+            current = FuzzerReport(REDOS_KIND, True, "", [], last_artifact)
+            reports.append(current)
+            continue
         header = _HEADER.match(line)
-        if header or _TIMEOUT.search(line):
-            title = header.group(1).strip() if header else "Timeout"
+        if header:
+            title = header.group(1).strip()
             kind = "Uncaught Exception" if title.startswith("Uncaught Exception") else title
             current = FuzzerReport(kind, kind in SECURITY_DETECTORS, "", [], None)
             reports.append(current)
@@ -171,8 +191,6 @@ def parse_jazzer_output(output: str) -> list[FuzzerReport]:
             continue
         if _FRAME.match(line):
             current.frames.append(line.strip())
-        elif artifact := _ARTIFACT.search(line):
-            current.crash_file = Path(artifact.group(1)).name
         elif not current.frames and line.strip():
             current.message += line.strip() + "\n"
     return reports
