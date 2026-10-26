@@ -260,9 +260,12 @@ SINK_MARK = "// <-- SAST sink"
 # fuzzer must also trigger a detector crash. Keyed by normalized vulnerability class.
 _CONFIRM_RECIPES = {
     "redos": (
-        "pass a long run of one character plus a breaking suffix (e.g. \"a\".repeat(5000) + \"!\") as the "
-        "string that reaches the vulnerable regex, so one match backtracks for seconds. Consume the fuzz "
-        "input as a string and forward it unmodified — never cap or truncate its length."
+        "drive the vulnerable regex into catastrophic backtracking with a pathological string — a long "
+        "run of one character plus a breaking suffix, e.g. \"a\".repeat(5000) + \"!\". Pass it straight "
+        "into the parameter that reaches the regex by calling the exported function that runs the regex "
+        "as directly as its API allows; do NOT stub child_process/exec or other internals to smuggle the "
+        "string in — prefer a direct call path over a mocked command path. Forward the fuzz input "
+        "unmodified and never cap its length."
     ),
     "prototype-pollution": (
         "pass an object/JSON whose key lands on Object.prototype, e.g. JSON like "
