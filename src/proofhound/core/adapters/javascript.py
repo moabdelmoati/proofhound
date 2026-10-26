@@ -110,14 +110,14 @@ class JavaScriptAdapter(LanguageAdapter):
         return HARNESS_TEMPLATE.replace("{module}", module)
 
     # Harnesses run in async mode (no --sync) so targets that return promises are awaited.
-    # -timeout reports a single input slower than PER_INPUT_TIMEOUT_S as a libFuzzer timeout.
-    # Without it, catastrophic regex backtracking (ReDoS) is invisible: libFuzzer's default
-    # per-input timeout is 1200s, which never fires inside the short -max_total_time budget.
+    # --timeout (Jazzer, milliseconds) reports a single input slower than it as a timeout. Without a
+    # short per-input timeout, catastrophic regex backtracking (ReDoS) is invisible — the run just
+    # stalls to -max_total_time and records no crash. Jazzer's own default is 5s; we set it
+    # explicitly so the ReDoS signal does not silently depend on that default.
     def fuzz_command(self, time_s: int) -> list[str]:
         return [
-            "jazzer", HARNESS, f"{OUT}/corpus",
-            "--", f"-max_total_time={time_s}", f"-timeout={PER_INPUT_TIMEOUT_S}",
-            f"-artifact_prefix={OUT}/",
+            "jazzer", HARNESS, f"{OUT}/corpus", f"--timeout={PER_INPUT_TIMEOUT_MS}",
+            "--", f"-max_total_time={time_s}", f"-artifact_prefix={OUT}/",
         ]
 
     def replay_command(self, inputs: str) -> list[str]:
@@ -154,8 +154,9 @@ class JavaScriptAdapter(LanguageAdapter):
 
 HARNESS = f"{OUT}/harness.js"
 SECURITY_DETECTORS = {"Command Injection", "Path Traversal", "Prototype Pollution"}
-# A single fuzz input slower than this (seconds) is a libFuzzer timeout — our ReDoS crash signal.
-PER_INPUT_TIMEOUT_S = 10
+# A single fuzz input slower than this (Jazzer --timeout, milliseconds) is reported as a timeout —
+# our ReDoS crash signal. Catastrophic backtracking blows well past it; a legit slow input will not.
+PER_INPUT_TIMEOUT_MS = 10000
 REDOS_KIND = "ReDoS"
 _HEADER = re.compile(r"^==\d+== (.+)$")
 _TIMEOUT = re.compile(r"ERROR: libFuzzer: timeout")
