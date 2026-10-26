@@ -46,5 +46,6 @@ In `scripts/build_training_v6.py`, the builder was writing `"split": "train"` st
   - Step 5: `loss = 0.8919`, `epoch = 0.37`
   - Step 10: `loss = 0.7841`, `epoch = 0.75`
   - Step 15: `loss = 0.6657`, `epoch = 1.08`
-  - Step 20: `loss = 0.5866`, `epoch = 1.45` (48% complete, loss converging smoothly)
+  - Step 20: `loss = 0.5866`, `epoch = 1.45`
+  - Step 25: `loss = 0.5378`, `epoch = 1.82` (60% complete, checkpoint-25 saved)
   - Current Status: `KernelWorkerStatus.RUNNING` (estimated completion at ~42 steps).
