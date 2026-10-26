@@ -1,0 +1,121 @@
+{
+  "models": [
+    {
+      "model": "local-harness",
+      "findings": 6,
+      "errors": 0,
+      "syntax_ok": "6 (100%)",
+      "loaded": "4 (67%)",
+      "reached": "4 (67%)",
+      "confirmed": "1 (17%)",
+      "avg_tokens": 5358,
+      "avg_seconds": 0.0
+    }
+  ],
+  "by_class": [
+    {
+      "model": "local-harness",
+      "vuln_class": "command-injection",
+      "findings": 2,
+      "errors": 0,
+      "syntax_ok": "2 (100%)",
+      "loaded": "1 (50%)",
+      "reached": "1 (50%)",
+      "confirmed": "1 (50%)",
+      "avg_tokens": 4024,
+      "avg_seconds": 0.0
+    },
+    {
+      "model": "local-harness",
+      "vuln_class": "redos",
+      "findings": 4,
+      "errors": 0,
+      "syntax_ok": "4 (100%)",
+      "loaded": "3 (75%)",
+      "reached": "3 (75%)",
+      "confirmed": "0 (0%)",
+      "avg_tokens": 6025,
+      "avg_seconds": 0.0
+    }
+  ],
+  "per_finding": [
+    {
+      "case": "arpping_2.0.0",
+      "finding_id": "cb8fdc7130",
+      "vuln_class": "command-injection",
+      "model": "local-harness",
+      "attempts": 5,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 6739,
+      "seconds": 0.0
+    },
+    {
+      "case": "arpping_2.0.0",
+      "finding_id": "3f6abeb009",
+      "vuln_class": "command-injection",
+      "model": "local-harness",
+      "attempts": 1,
+      "syntax_ok": true,
+      "loaded": true,
+      "reached": true,
+      "confirmed": true,
+      "tokens": 1309,
+      "seconds": 0.0
+    },
+    {
+      "case": "arpping_2.0.0",
+      "finding_id": "13f29f7ad6",
+      "vuln_class": "redos",
+      "model": "local-harness",
+      "attempts": 5,
+      "syntax_ok": true,
+      "loaded": true,
+      "reached": true,
+      "confirmed": false,
+      "tokens": 6581,
+      "seconds": 0.0
+    },
+    {
+      "case": "arpping_2.0.0",
+      "finding_id": "d743fff5e2",
+      "vuln_class": "redos",
+      "model": "local-harness",
+      "attempts": 5,
+      "syntax_ok": true,
+      "loaded": true,
+      "reached": true,
+      "confirmed": false,
+      "tokens": 6615,
+      "seconds": 0.0
+    },
+    {
+      "case": "arpping_2.0.0",
+      "finding_id": "e0d434123c",
+      "vuln_class": "redos",
+      "model": "local-harness",
+      "attempts": 5,
+      "syntax_ok": true,
+      "loaded": true,
+      "reached": true,
+      "confirmed": false,
+      "tokens": 6703,
+      "seconds": 0.0
+    },
+    {
+      "case": "arpping_2.0.0",
+      "finding_id": "cab298854d",
+      "vuln_class": "redos",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 4202,
+      "seconds": 0.0
+    }
+  ]
+}
