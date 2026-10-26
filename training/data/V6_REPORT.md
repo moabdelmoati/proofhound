@@ -49,5 +49,26 @@ In `scripts/build_training_v6.py`, the builder was writing `"split": "train"` st
   - Step 20: `loss = 0.5866`, `epoch = 1.45`
   - Step 25: `loss = 0.5378`, `epoch = 1.82` (60% complete, checkpoint-25 saved)
   - Step 30: `loss = 0.4784`, `epoch = 2.15` (71% complete, loss < 0.50)
-  - Step 35: `loss = 0.4883`, `epoch = 2.52` (83% complete, 7 steps remaining)
-  - Current Status: `KernelWorkerStatus.RUNNING` (estimated completion at ~42 steps).
+  - Step 35: `loss = 0.4883`, `epoch = 2.52`
+  - Step 40: `loss = 0.4140`, `epoch = 2.90`
+  - Step 42: `train_loss = 0.6013`, `epoch = 3.00` (100% complete)
+- **Total Training Runtime:** 20,910s (~5.81 hours) on dual Tesla T4 GPUs.
+- **Kaggle Status:** `KernelWorkerStatus.COMPLETE`
+
+---
+
+## 4. Adapter Download & Organization
+
+The adapter files were downloaded from Kaggle output and flattened into `models/harness-adapter-14b-v6/`:
+- `adapter_config.json` (1,138 B)
+- `adapter_model.safetensors` (100,715,016 B / ~96.0 MB)
+- `chat_template.jinja` (2,507 B)
+- `proofhound_format.json` (247 B)
+- `README.md` (5,216 B)
+- `tokenizer.json` (11,421,892 B / ~10.9 MB)
+- `tokenizer_config.json` (693 B)
+- `training_args.bin` (5,201 B)
+
+Kernel log was archived to `.trash_cleanup/proofhound-harness-14b-v6.log`.
+
+**Evaluation:** No evaluation run, strictly stopped per brief instructions.
