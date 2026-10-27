@@ -256,47 +256,6 @@ class HarnessAgent:
 SINK_MARK = "// <-- SAST sink"
 
 
-# Per-class recipes for what input SHAPE makes the bug fire — reaching the sink is not enough, the
-# fuzzer must also trigger a detector crash. Keyed by normalized vulnerability class.
-_CONFIRM_RECIPES = {
-    "redos": (
-        "drive the vulnerable regex into catastrophic backtracking with a pathological string — a long "
-        "run of one character plus a breaking suffix, e.g. \"a\".repeat(5000) + \"!\". Pass it straight "
-        "into the parameter that reaches the regex by calling the exported function that runs the regex "
-        "as directly as its API allows; do NOT stub child_process/exec or other internals to smuggle the "
-        "string in — prefer a direct call path over a mocked command path. Forward the fuzz input "
-        "unmodified and never cap its length."
-    ),
-    "prototype-pollution": (
-        "pass an object/JSON whose key lands on Object.prototype, e.g. JSON like "
-        "{\"__proto__\": {\"polluted\": true}} or a \"constructor\",\"prototype\" key path, into the sink, "
-        "so a fresh object's ({}).polluted becomes set."
-    ),
-    "command-injection": (
-        "forward the fuzz string straight into the argument that builds the command, including shell "
-        "metacharacters (e.g. \"; id\", \"$(id)\", backticks), so the injected command runs."
-    ),
-    "path-traversal": (
-        "forward the fuzz string straight into the path argument, including ../ sequences escaping the "
-        "base dir (e.g. \"../../../../etc/passwd\")."
-    ),
-    "code-injection": (
-        "forward the fuzz string straight into the eval/Function sink as code that has an observable "
-        "effect (e.g. calls a global), so the injected code executes."
-    ),
-}
-
-
-def _confirm_recipe(vuln_class: str | None) -> str:
-    if not vuln_class:
-        return ""
-    norm = vuln_class.lower().replace(" ", "-")
-    for key, recipe in _CONFIRM_RECIPES.items():
-        if key in norm or norm in key:
-            return f"\nTo CONFIRM this {vuln_class} (not just reach the sink), {recipe}\n"
-    return ""
-
-
 def build_prompt(
     finding: Finding, function_source: str, module_source: str, module: str, template: str,
     use_sast_hints: bool = True,
@@ -321,13 +280,12 @@ def build_prompt(
             f"Finding message: {finding.message}\n"
         )
     chain_section = f"\n{call_chain}\n" if call_chain else ""
-    recipe = _confirm_recipe(finding.vuln_class)
     return (
         "Generate a harness that invokes this changed function with fuzz-derived data.\n"
         f"Module path inside the sandbox: {module}\n"
         f"Function name: {finding.function.name}\n"
         f"Function source (line {finding.function.start_line} onward):\n"
-        f"```javascript\n{function_source}\n```\n{hint}{recipe}"
+        f"```javascript\n{function_source}\n```\n{hint}"
         f"{chain_section}"
         "Full module source, for understanding imports and exports:\n"
         f"```javascript\n{module_source}\n```\n"

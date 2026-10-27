@@ -195,7 +195,10 @@ def source_b(adapter: JavaScriptAdapter, eval_prompts: dict, stats: Counter,
             stats["B skip: no harness"] += 1
             continue
 
-        case_dir = BENCH_CASES / case
+        case_dir = next(
+            (root / case for root in (TRAIN_CASES, BENCH_CASES) if (root / case / "repo").is_dir()),
+            BENCH_CASES / case,
+        )
         repo = case_dir / "repo"
         if not repo.is_dir():
             stats["B skip: repo missing"] += 1
