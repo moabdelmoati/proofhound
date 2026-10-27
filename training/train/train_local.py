@@ -170,7 +170,7 @@ def main() -> None:
         bnb_4bit_compute_dtype=dtype, bnb_4bit_use_double_quant=True,
     )
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, quantization_config=bnb, device_map="auto", dtype=dtype,
+        args.model, quantization_config=bnb, device_map="auto", torch_dtype=dtype,
     )
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
     target_modules = args.target_modules if args.target_modules else "all-linear"
