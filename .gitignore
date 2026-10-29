@@ -39,3 +39,6 @@ training/data/*
 
 
 .claude/settings.local.json
+scratch/
+*.bak
+.env.bak
