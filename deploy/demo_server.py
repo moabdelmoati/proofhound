@@ -40,11 +40,27 @@ def _ssh_info(instance_id: str):
     return None, None, None
 
 
+SSH_OPTS = ["-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=25",
+            "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=8"]
+
+
 def _ssh(host, port, cmd, timeout=120):
     return subprocess.run(
-        ["ssh", "-i", str(KEY), "-p", str(port), "-o", "StrictHostKeyChecking=accept-new",
-         "-o", "ConnectTimeout=25", f"root@{host}", cmd],
+        ["ssh", "-i", str(KEY), "-p", str(port), *SSH_OPTS, f"root@{host}", cmd],
         capture_output=True, text=True, timeout=timeout)
+
+
+def _scp(host, port, src, dst, retries=4):
+    """vast.ai direct SSH drops mid-transfer; retry the (large) copy a few times."""
+    for attempt in range(1, retries + 1):
+        r = subprocess.run(
+            ["scp", "-i", str(KEY), "-P", str(port), *SSH_OPTS, str(src), f"root@{host}:{dst}"],
+            capture_output=True, text=True)
+        if r.returncode == 0:
+            return
+        print(f"    scp {Path(src).name} attempt {attempt}/{retries} failed; retrying...")
+        time.sleep(5)
+    raise RuntimeError(f"scp failed after {retries} attempts: {src}")
 
 
 def up():
@@ -73,15 +89,26 @@ def up():
             break
     if not host:
         sys.exit(f"instance {inst} did not come up; run `down` to clean it up")
-    print(f"[*] box up at {host}:{port}. Uploading adapter + setup...")
-    subprocess.run(["ssh", "-i", str(KEY), "-p", str(port), "-o", "StrictHostKeyChecking=accept-new",
-                    f"root@{host}", "mkdir -p /root/adapter"], check=True)
-    subprocess.run(["scp", "-i", str(KEY), "-P", str(port), "-o", "StrictHostKeyChecking=accept-new",
-                    str(SETUP), f"root@{host}:/root/serve_box_setup.sh"], check=True)
-    for f in ADAPTER.iterdir():
-        if f.is_file():
-            subprocess.run(["scp", "-i", str(KEY), "-P", str(port), str(f),
-                            f"root@{host}:/root/adapter/"], check=True)
+    print(f"[*] box up at {host}:{port}. Waiting for sshd to accept (can lag after boot)...")
+    for _ in range(18):   # up to 3 min — vast direct SSH ports are flaky right after boot
+        r = _ssh(host, port, "echo ok", timeout=30)
+        if r.returncode == 0 and "ok" in r.stdout:
+            break
+        time.sleep(10)
+    else:
+        sys.exit(f"sshd never accepted on {host}:{port}; run `down` to clean it up and retry")
+    print("[*] sshd ready. Uploading setup + kaggle creds (the box pulls the adapter itself)...")
+    _ssh(host, port, "mkdir -p /root/adapter")
+    _scp(host, port, SETUP, "/root/serve_box_setup.sh")
+    kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
+    if kaggle_json.is_file():
+        _scp(host, port, kaggle_json, "/root/kaggle.json")
+    else:
+        # fall back to uploading the adapter from local (slower, flaky on big files)
+        print("    no ~/.kaggle/kaggle.json — uploading the adapter from local instead...")
+        for f in sorted(ADAPTER.iterdir()):
+            if f.is_file():
+                _scp(host, port, f, "/root/adapter/")
     print("[*] running box setup (installs deps, starts serving)...")
     _ssh(host, port, "bash /root/serve_box_setup.sh", timeout=600)
     print("[*] waiting for the model to be ready (base model downloads ~10GB)...")

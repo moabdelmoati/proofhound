@@ -21,8 +21,22 @@ cd /root/proofhound
 
 echo "[2/5] installing serving deps..."
 pip install -q "transformers==4.47.1" peft bitsandbytes accelerate pydantic protobuf sentencepiece \
-  tree-sitter tree-sitter-javascript tree-sitter-typescript tree-sitter-python 2>&1 | tail -1 || true
+  kaggle tree-sitter tree-sitter-javascript tree-sitter-typescript tree-sitter-python 2>&1 | tail -1 || true
 pip install -q -e . --no-deps 2>&1 | tail -1 || true
+
+echo "[2b/5] fetching the adapter from Kaggle (box has fast, stable internet)..."
+if [ ! -f /root/adapter/adapter_model.safetensors ]; then
+  mkdir -p /root/.kaggle && cp /root/kaggle.json /root/.kaggle/kaggle.json 2>/dev/null || true
+  chmod 600 /root/.kaggle/kaggle.json 2>/dev/null || true
+  rm -rf /root/adapter_dl && mkdir -p /root/adapter_dl
+  kaggle kernels output ebbrewqvqv/proofhound-harness-14b-v5 -p /root/adapter_dl 2>&1 | tail -2
+  mkdir -p /root/adapter
+  # flatten: the adapter files may sit in a nested folder
+  find /root/adapter_dl -name adapter_config.json -printf '%h\n' | head -1 | while read d; do
+    cp "$d"/* /root/adapter/ 2>/dev/null || true
+  done
+fi
+ls -la /root/adapter/adapter_model.safetensors 2>/dev/null || { echo "ADAPTER MISSING"; exit 1; }
 
 echo "[3/5] fixing adapter tokenizer_config (transformers rejects list extra_special_tokens)..."
 python - <<'PY'
