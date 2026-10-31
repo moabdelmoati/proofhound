@@ -65,5 +65,14 @@ class Settings(BaseModel):
 
 
 def load_settings(path: Path) -> Settings:
+    import os
+
     with path.open(encoding="utf-8") as f:
-        return Settings.model_validate(yaml.safe_load(f) or {})
+        settings = Settings.model_validate(yaml.safe_load(f) or {})
+    # CI / remote serving: point the local-harness model at a served endpoint without editing the
+    # config. MODEL_ENDPOINT is the OpenAI-compatible base URL (e.g. an SSH-tunnelled GPU box or an
+    # HF Inference Endpoint). See deploy/README.md.
+    endpoint = os.environ.get("MODEL_ENDPOINT")
+    if endpoint and "local-harness" in settings.models:
+        settings.models["local-harness"].base_url = endpoint
+    return settings

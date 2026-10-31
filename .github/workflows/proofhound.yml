@@ -1,44 +1,58 @@
-# Run ProofHound on the functions changed by a pull request and upload results to the
-# GitHub Security tab (code scanning). Requires an LLM API key in repository secrets for
-# harness generation; without one, the analyze-only job still reports SAST findings.
-name: ProofHound
+# ProofHound — confirm real vulnerabilities on every push / PR.
+#
+# Copy this file into any repo's .github/workflows/. It analyzes the pushed commit's changed
+# functions, writes fuzzing harnesses with the ProofHound model, proves which findings actually
+# crash, and uploads the result as SARIF (GitHub Security tab + inline PR annotations).
+#
+# The model needs a GPU, so it is served separately and reached over HTTP. Set the repo secret
+# MODEL_ENDPOINT to the served model's OpenAI-compatible base URL (e.g. an SSH-tunnelled vast.ai
+# box from deploy/demo_server.py, or a scale-to-zero HF Inference Endpoint). Everything else —
+# SAST and the Jazzer.js fuzzing in Docker — runs on the standard GitHub runner.
 
+name: ProofHound
 on:
   pull_request:
-  workflow_dispatch:
+  push:
+    branches: [main, master]
 
 permissions:
   contents: read
-  security-events: write   # upload SARIF to code scanning
+  security-events: write   # needed to upload SARIF to code scanning
 
 jobs:
-  scan:
+  proofhound:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0     # ProofHound diffs the commit against its parent
+          fetch-depth: 2        # need the parent commit to diff changed functions
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install ProofHound
-        run: pip install -e .
-
-      - name: Build the fuzzing sandbox image
-        run: docker build -t proofhound/jazzerjs:latest docker/jazzerjs
-
-      - name: Scan the pull request
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          proofhound scan --repo . --commit "${{ github.event.pull_request.head.sha || github.sha }}"
-          echo "SARIF_FILE=$(ls runs/*/report.sarif | head -1)" >> "$GITHUB_ENV"
+          pip install -e .
+          pip install semgrep
 
-      - name: Upload results to code scanning
-        if: always() && env.SARIF_FILE != ''
+      - name: Build the Jazzer.js sandbox image
+        run: docker build -t proofhound/jazzerjs:latest docker/jazzerjs/
+
+      - name: Scan the pushed commit
+        env:
+          # The config's local-harness model reads this; point it at the served model.
+          MODEL_ENDPOINT: ${{ secrets.MODEL_ENDPOINT }}
+        run: |
+          proofhound scan \
+            --repo . \
+            --commit HEAD \
+            --agent multi \
+            --model local-harness
+
+      - name: Upload results to GitHub code scanning
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ${{ env.SARIF_FILE }}
+          sarif_file: runs
           category: proofhound

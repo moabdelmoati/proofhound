@@ -42,3 +42,5 @@ training/data/*
 scratch/
 *.bak
 .env.bak
+
+deploy/.demo_instance
