@@ -1,0 +1,35 @@
+# Publish the VS Code extension to the Marketplace via OIDC Trusted Publishing (no PAT stored).
+#
+# Triggers on a vscode-v* tag (e.g. git tag vscode-v0.1.0 && git push origin vscode-v0.1.0).
+# vsce requests a GitHub OIDC token for the Marketplace and exchanges it for a short-lived
+# session token — so no Personal Access Token is kept anywhere.
+#
+# Requires: on marketplace.visualstudio.com/manage, a Trusted Publishing policy for publisher
+# "moabdelmoati", repo moabdelmoati/proofhound, workflow publish-vscode.yml.
+
+name: Publish VS Code extension
+on:
+  push:
+    tags: ["vscode-v*"]
+
+permissions:
+  id-token: write        # required for OIDC token exchange
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install and compile
+        run: |
+          npm ci
+          npm run compile
+      - name: Publish to the Marketplace (OIDC)
+        run: npx @vscode/vsce publish --oidc
