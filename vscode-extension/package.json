@@ -2,7 +2,7 @@
   "name": "proofhound",
   "displayName": "ProofHound",
   "description": "Prove vulnerabilities instead of guessing — SAST-guided analysis and fuzzing for JS/TS, inline in your editor.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "moabdelmoati",
   "license": "MIT",
   "repository": {
