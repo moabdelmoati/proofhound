@@ -8,6 +8,17 @@ version = "0.1.0"
 description = "Agentic vulnerability discovery and repair: SAST-guided LLM fuzzing for JS/TS."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "moabdelmoati" }]
+keywords = ["security", "fuzzing", "sast", "vulnerability", "llm", "agent", "javascript"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Security",
+  "Topic :: Software Development :: Testing",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: JavaScript",
+]
 dependencies = [
   "typer>=0.12",
   "pydantic>=2.7",
@@ -27,6 +38,11 @@ dependencies = [
 dev = ["pytest>=8", "ruff>=0.5"]
 mcp = ["mcp[cli]>=1.0"]
 ci  = ["semgrep"]
+
+[project.urls]
+Homepage = "https://github.com/moabdelmoati/proofhound"
+Repository = "https://github.com/moabdelmoati/proofhound"
+Issues = "https://github.com/moabdelmoati/proofhound/issues"
 
 [project.scripts]
 proofhound     = "proofhound.cli:app"
