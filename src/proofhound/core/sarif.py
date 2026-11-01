@@ -9,11 +9,20 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
-from proofhound.core.models import FindingStatus, RunReport
+from proofhound.core.models import Finding, FindingStatus, RunReport, Severity
 
 INFORMATION_URI = "https://github.com/moabdelmoati/proofhound"
+
+# For SAST-only results (analyze): nothing is proven, so map severity to a non-error level.
+_SEVERITY_LEVEL = {
+    Severity.CRITICAL: "warning",
+    Severity.HIGH: "warning",
+    Severity.MEDIUM: "note",
+    Severity.LOW: "note",
+}
 
 # Findings with these statuses are not reported as code-scanning results.
 _OMIT = {FindingStatus.SKIPPED_BUDGET, FindingStatus.ERROR}
@@ -103,9 +112,76 @@ def build_sarif(report: RunReport) -> dict:
     }
 
 
-def write_sarif(report: RunReport, path: Path) -> int:
-    """Write the report as SARIF to `path`. Returns the number of results written."""
-    doc = build_sarif(report)
+def build_sarif_from_findings(findings: Iterable[Finding], tool_version: str) -> dict:
+    """SARIF for SAST-only findings (the `analyze` command) — no fuzzing confirmation.
+
+    Severity maps to warning/note; nothing is reported as error because nothing is proven.
+    """
+    rules: dict[str, dict] = {}
+    results: list[dict] = []
+
+    for f in findings:
+        uri = f.file.as_posix()
+        level = _SEVERITY_LEVEL.get(f.severity, "note")
+        rules.setdefault(
+            f.rule_id,
+            {
+                "id": f.rule_id,
+                "name": f.rule_id,
+                "shortDescription": {"text": f.vuln_class or f.rule_id},
+                "defaultConfiguration": {"level": level},
+                "helpUri": INFORMATION_URI,
+            },
+        )
+        results.append(
+            {
+                "ruleId": f.rule_id,
+                "level": level,
+                "message": {"text": f.message},
+                "locations": [
+                    {
+                        "physicalLocation": {
+                            "artifactLocation": {"uri": uri},
+                            "region": {"startLine": max(1, f.line)},
+                        }
+                    }
+                ],
+                "partialFingerprints": {
+                    "proofhound/v1": _fingerprint(f.rule_id, uri, f.line),
+                },
+            }
+        )
+
+    return {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "ProofHound",
+                        "version": tool_version,
+                        "informationUri": INFORMATION_URI,
+                        "rules": list(rules.values()),
+                    }
+                },
+                "results": results,
+            }
+        ],
+    }
+
+
+def _write(doc: dict, path: Path) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
     return len(doc["runs"][0]["results"])
+
+
+def write_sarif(report: RunReport, path: Path) -> int:
+    """Write a scan RunReport as SARIF to `path`. Returns the number of results written."""
+    return _write(build_sarif(report), path)
+
+
+def write_sarif_findings(findings: Iterable[Finding], tool_version: str, path: Path) -> int:
+    """Write SAST-only findings as SARIF to `path`. Returns the number of results written."""
+    return _write(build_sarif_from_findings(findings, tool_version), path)
