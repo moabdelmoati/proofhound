@@ -25,9 +25,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5"]
+mcp = ["mcp[cli]>=1.0"]
+ci  = ["semgrep"]
 
 [project.scripts]
-proofhound = "proofhound.cli:app"
+proofhound     = "proofhound.cli:app"
+proofhound-mcp = "proofhound.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/proofhound"]
