@@ -10,7 +10,8 @@
 name: Publish to PyPI
 on:
   push:
-    tags: ["v*"]
+    # Match v0.1.0 etc. but NOT vscode-v* (which triggers the VS Code publish).
+    tags: ["v[0-9]*"]
   release:
     types: [published]
 
