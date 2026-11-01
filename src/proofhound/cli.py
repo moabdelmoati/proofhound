@@ -81,6 +81,9 @@ def scan(
         help="--agent multi only: use hand-written harnesses (<function>.js) instead of the LLM. "
         "No API key needed; used for testing and the demo fallback.",
     ),
+    sarif: Path = typer.Option(
+        None, help="Also write results as SARIF 2.1.0 to this path (for GitHub code scanning)."
+    ),
 ) -> None:
     """Analyze a commit, write harnesses, and prove findings by fuzzing."""
     if agent not in {"single", "multi"}:
@@ -90,9 +93,14 @@ def scan(
     settings = load_settings(config)
     sha = _resolve(repo, commit)
     if agent == "single":
-        _scan_single(settings, repo, sha, model)
+        report = _scan_single(settings, repo, sha, model)
     else:
-        _scan_multi(settings, repo, sha, model, harness_dir)
+        report = _scan_multi(settings, repo, sha, model, harness_dir)
+    if sarif is not None:
+        from proofhound.core.sarif import write_sarif
+
+        n = write_sarif(report, sarif)
+        console.print(f"\nSARIF: {sarif}  ({n} result{'s' if n != 1 else ''})")
 
 
 def _model_config(settings: Settings, key: str) -> ModelConfig:
@@ -104,7 +112,7 @@ def _model_config(settings: Settings, key: str) -> ModelConfig:
         ) from e
 
 
-def _scan_single(settings: Settings, repo: Path, sha: str, model: str | None) -> None:
+def _scan_single(settings: Settings, repo: Path, sha: str, model: str | None) -> RunReport:
     from proofhound.single_agent.runner import scan_commit
 
     key = model or settings.single_agent.model
@@ -117,11 +125,12 @@ def _scan_single(settings: Settings, repo: Path, sha: str, model: str | None) ->
         f"protocol errors: {result.protocol_errors}, tokens: {result.tokens_used:,}"
     )
     console.print(f"Report: {run_dir / 'report.json'}   Transcript: {run_dir / 'transcript.jsonl'}")
+    return report
 
 
 def _scan_multi(
     settings: Settings, repo: Path, sha: str, model: str | None, harness_dir: Path | None,
-) -> None:
+) -> RunReport:
     adapter = JavaScriptAdapter()
     sandbox = DockerSandbox(settings.sandbox)
     attempt_logger = AttemptLogger(Path("training/data/harness_attempts.jsonl"))
@@ -151,6 +160,7 @@ def _scan_multi(
     report = pipeline.run(repo, sha, run_dir)
     _print_summary(report)
     console.print(f"\nReport: {run_dir / 'report.json'}")
+    return report
 
 
 def _print_summary(report: RunReport) -> None:

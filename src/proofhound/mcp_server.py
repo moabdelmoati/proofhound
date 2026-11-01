@@ -33,6 +33,7 @@ def _run_cli(*args: str) -> tuple[int, str]:
     """Run the proofhound CLI in a subprocess; return (returncode, combined output)."""
     result = subprocess.run(
         [sys.executable, "-m", "proofhound.cli", *args],
+        check=False,
         capture_output=True,
         text=True,
     )
@@ -107,7 +108,7 @@ def scan_commit(
         return f"ERROR (exit {rc}):\n{out}"
 
     # Try to parse the report.json that the pipeline writes to runs/<sha12>/
-    sha_line = next((l for l in out.splitlines() if "Report:" in l), None)
+    sha_line = next((line for line in out.splitlines() if "Report:" in line), None)
     if sha_line:
         report_path = sha_line.split("Report:")[-1].split()[0].strip()
         try:
