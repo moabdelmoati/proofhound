@@ -1,0 +1,25 @@
+{
+  "description": "Seed inputs that trigger path traversal. Jazzer's PathTraversal detector flags fs calls that resolve outside the allowed root; these payloads cover common escape patterns.",
+  "seeds": [
+    "../../../etc/passwd",
+    "../../../../etc/passwd",
+    "../../../../../../../../etc/passwd",
+    "..\\..\\..\\windows\\win.ini",
+    "..%2f..%2f..%2fetc%2fpasswd",
+    "..%252f..%252f..%252fetc%252fpasswd",
+    "....//....//....//etc/passwd",
+    "..;/..;/..;/etc/passwd",
+    "/etc/passwd",
+    "/proc/self/environ",
+    "file:///etc/passwd",
+    "\\\\..\\\\..\\\\..\\\\etc\\\\passwd",
+    "..%2f..%2f..%2fetc%2fpasswd",
+    "/../../../etc/passwd%00.jpg",
+    "../.././../etc/passwd",
+    "foo/../../../etc/passwd",
+    "./../../../etc/passwd",
+    "..//..//..//etc/passwd",
+    "..\\\\..\\\\..\\\\etc\\\\passwd",
+    "/var/log/../../../etc/passwd"
+  ]
+}

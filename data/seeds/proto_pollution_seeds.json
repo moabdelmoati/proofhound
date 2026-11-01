@@ -1,0 +1,25 @@
+{
+  "description": "Seed inputs that trigger prototype pollution. Jazzer's PrototypePollution detector flags writes to Object.prototype; these payloads give the fuzzer working examples to mutate.",
+  "seeds": [
+    "{\"__proto__\":{\"polluted\":true}}",
+    "{\"constructor\":{\"prototype\":{\"polluted\":true}}}",
+    "{\"__proto__\":{\"isAdmin\":true}}",
+    "{\"a\":{\"__proto__\":{\"polluted\":true}}}",
+    "{\"a\":{\"b\":{\"__proto__\":{\"polluted\":true}}}}",
+    "__proto__.polluted",
+    "__proto__[polluted]",
+    "constructor.prototype.polluted",
+    "a.__proto__.polluted",
+    "a.b.__proto__.polluted",
+    "{\"__proto__\":{\"toString\":\"pwned\"}}",
+    "{\"__proto__\":{\"hasOwnProperty\":\"pwned\"}}",
+    "{\"__proto__\":{\"valueOf\":\"pwned\"}}",
+    "[\"__proto__\",\"polluted\",true]",
+    "[\"constructor\",\"prototype\",\"polluted\",true]",
+    "a[__proto__][polluted]=1",
+    "{\"__proto__\":{\"__proto__\":{\"polluted\":true}}}",
+    "__proto__.toString",
+    "constructor[prototype][polluted]",
+    "{\"deep\":{\"nested\":{\"__proto__\":{\"polluted\":true}}}}"
+  ]
+}

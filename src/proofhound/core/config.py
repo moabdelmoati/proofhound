@@ -20,6 +20,9 @@ class HarnessSettings(BaseModel):
     small_model_repair_attempts: int = 2
     large_model_repair_attempts: int = 2
     use_sast_hints: bool = True
+    class_seeds: bool = True
+    rejection_sampling: bool = False
+    call_chain_v2: bool = True
 
 
 class SingleAgentSettings(BaseModel):
@@ -62,5 +65,14 @@ class Settings(BaseModel):
 
 
 def load_settings(path: Path) -> Settings:
+    import os
+
     with path.open(encoding="utf-8") as f:
-        return Settings.model_validate(yaml.safe_load(f) or {})
+        settings = Settings.model_validate(yaml.safe_load(f) or {})
+    # CI / remote serving: point the local-harness model at a served endpoint without editing the
+    # config. MODEL_ENDPOINT is the OpenAI-compatible base URL (e.g. an SSH-tunnelled GPU box or an
+    # HF Inference Endpoint). See deploy/README.md.
+    endpoint = os.environ.get("MODEL_ENDPOINT")
+    if endpoint and "local-harness" in settings.models:
+        settings.models["local-harness"].base_url = endpoint
+    return settings

@@ -1,0 +1,158 @@
+{
+  "models": [
+    {
+      "model": "local-harness",
+      "findings": 7,
+      "errors": 0,
+      "syntax_ok": "7 (100%)",
+      "loaded": "1 (14%)",
+      "reached": "1 (14%)",
+      "confirmed": "0 (0%)",
+      "avg_tokens": 3908,
+      "avg_seconds": 678.8
+    }
+  ],
+  "by_class": [
+    {
+      "model": "local-harness",
+      "vuln_class": "command-injection",
+      "findings": 1,
+      "errors": 0,
+      "syntax_ok": "1 (100%)",
+      "loaded": "0 (0%)",
+      "reached": "0 (0%)",
+      "confirmed": "0 (0%)",
+      "avg_tokens": 3772,
+      "avg_seconds": 542.2
+    },
+    {
+      "model": "local-harness",
+      "vuln_class": "path-traversal",
+      "findings": 2,
+      "errors": 0,
+      "syntax_ok": "2 (100%)",
+      "loaded": "0 (0%)",
+      "reached": "0 (0%)",
+      "confirmed": "0 (0%)",
+      "avg_tokens": 4339,
+      "avg_seconds": 947.3
+    },
+    {
+      "model": "local-harness",
+      "vuln_class": "prototype-pollution",
+      "findings": 2,
+      "errors": 0,
+      "syntax_ok": "2 (100%)",
+      "loaded": "1 (50%)",
+      "reached": "1 (50%)",
+      "confirmed": "0 (0%)",
+      "avg_tokens": 3827,
+      "avg_seconds": 618.0
+    },
+    {
+      "model": "local-harness",
+      "vuln_class": "redos",
+      "findings": 2,
+      "errors": 0,
+      "syntax_ok": "2 (100%)",
+      "loaded": "0 (0%)",
+      "reached": "0 (0%)",
+      "confirmed": "0 (0%)",
+      "avg_tokens": 3628,
+      "avg_seconds": 539.3
+    }
+  ],
+  "per_finding": [
+    {
+      "case": "asset-cache_0.0.6",
+      "finding_id": "029e512bac",
+      "vuln_class": "path-traversal",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 4252,
+      "seconds": 847.4
+    },
+    {
+      "case": "asset-cache_0.0.6",
+      "finding_id": "a55ef60143",
+      "vuln_class": "path-traversal",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 4426,
+      "seconds": 1047.3
+    },
+    {
+      "case": "blamer_0.1.13",
+      "finding_id": "971e749caf",
+      "vuln_class": "command-injection",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 3772,
+      "seconds": 542.2
+    },
+    {
+      "case": "blamer_0.1.13",
+      "finding_id": "d248f9d574",
+      "vuln_class": "redos",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 3457,
+      "seconds": 467.0
+    },
+    {
+      "case": "blamer_0.1.13",
+      "finding_id": "d4c000770a",
+      "vuln_class": "redos",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 3800,
+      "seconds": 611.6
+    },
+    {
+      "case": "blamer_0.1.13",
+      "finding_id": "0e9d4766c5",
+      "vuln_class": "prototype-pollution",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": true,
+      "reached": true,
+      "confirmed": false,
+      "tokens": 3830,
+      "seconds": 635.9
+    },
+    {
+      "case": "blamer_0.1.13",
+      "finding_id": "87f10f6bda",
+      "vuln_class": "prototype-pollution",
+      "model": "local-harness",
+      "attempts": 3,
+      "syntax_ok": true,
+      "loaded": false,
+      "reached": false,
+      "confirmed": false,
+      "tokens": 3824,
+      "seconds": 600.2
+    }
+  ]
+}

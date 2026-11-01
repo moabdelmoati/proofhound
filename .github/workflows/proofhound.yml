@@ -1,44 +1,105 @@
-# Run ProofHound on the functions changed by a pull request and upload results to the
-# GitHub Security tab (code scanning). Requires an LLM API key in repository secrets for
-# harness generation; without one, the analyze-only job still reports SAST findings.
-name: ProofHound
+# ProofHound — confirm real vulnerabilities on every push / PR.
+#
+# Copy this file into any repo's .github/workflows/. It analyzes the pushed commit's changed
+# functions, writes fuzzing harnesses with the ProofHound model, proves which findings actually
+# crash, and uploads the result as SARIF (GitHub Security tab + inline PR annotations).
+#
+# The model needs a GPU, so it is served separately and reached over HTTP. Set the repo secret
+# MODEL_ENDPOINT to the served model's OpenAI-compatible base URL (e.g. an SSH-tunnelled vast.ai
+# box from deploy/demo_server.py, or a scale-to-zero HF Inference Endpoint). Everything else —
+# SAST and the Jazzer.js fuzzing in Docker — runs on the standard GitHub runner.
+#
+# If MODEL_ENDPOINT is not set, ProofHound runs in SAST-only mode (no fuzzing, no GPU needed).
 
+name: ProofHound
 on:
   pull_request:
-  workflow_dispatch:
+  push:
+    branches: [main, master]
 
 permissions:
   contents: read
-  security-events: write   # upload SARIF to code scanning
+  security-events: write        # upload SARIF to code scanning
+  pull-requests: write          # post findings summary comment
 
 jobs:
-  scan:
+  proofhound:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0     # ProofHound diffs the commit against its parent
+          fetch-depth: 2        # need the parent commit to diff changed functions
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install ProofHound
-        run: pip install -e .
+        run: pip install -e ".[ci]"
 
-      - name: Build the fuzzing sandbox image
-        run: docker build -t proofhound/jazzerjs:latest docker/jazzerjs
+      - name: Build the Jazzer.js sandbox image
+        uses: docker/build-push-action@v5
+        with:
+          context: docker/jazzerjs
+          push: false
+          tags: proofhound/jazzerjs:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Scan the pull request
+      - name: Scan the pushed commit
+        id: scan
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL_ENDPOINT: ${{ secrets.MODEL_ENDPOINT }}
         run: |
-          proofhound scan --repo . --commit "${{ github.event.pull_request.head.sha || github.sha }}"
-          echo "SARIF_FILE=$(ls runs/*/report.sarif | head -1)" >> "$GITHUB_ENV"
+          # If no GPU endpoint is configured, fall back to SAST-only (analyze, no fuzzing).
+          if [ -z "$MODEL_ENDPOINT" ]; then
+            echo "MODEL_ENDPOINT not set — running SAST-only analysis (no fuzzing)."
+            proofhound analyze --repo . --commit HEAD 2>&1 | tee scan.log
+            echo "mode=sast-only" >> "$GITHUB_OUTPUT"
+          else
+            proofhound scan \
+              --repo . \
+              --commit HEAD \
+              --agent multi \
+              --model local-harness \
+              --sarif runs/results.sarif 2>&1 | tee scan.log
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Upload results to code scanning
-        if: always() && env.SARIF_FILE != ''
+      - name: Post findings summary on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.existsSync('scan.log') ? fs.readFileSync('scan.log', 'utf8') : '(no output)';
+            const mode = '${{ steps.scan.outputs.mode }}';
+            const modeLabel = mode === 'full'
+              ? '**Full mode** (SAST + LLM harness generation + fuzzing)'
+              : '**SAST-only mode** (set `MODEL_ENDPOINT` secret to enable fuzzing)';
+
+            // Extract summary line (last "Changed functions:" line from rich output)
+            const summary = log.split('\n').filter(l => l.includes('Changed functions:')).pop() || '';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '## ProofHound Security Scan',
+                '',
+                modeLabel,
+                '',
+                summary ? `\`\`\`\n${summary}\n\`\`\`` : '_No findings summary available._',
+                '',
+                '_Full results in the [Security tab](/' + context.repo.owner + '/' + context.repo.repo + '/security/code-scanning)._',
+              ].join('\n'),
+            });
+
+      - name: Upload SARIF to GitHub code scanning
+        if: steps.scan.outputs.mode == 'full' && always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ${{ env.SARIF_FILE }}
+          sarif_file: runs/results.sarif
           category: proofhound

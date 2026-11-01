@@ -1,0 +1,109 @@
+case,finding_id,vuln_class,attempts,syntax_ok,loaded,reached,crash_confirmed,failed_stage,category,detail
+aaptjs_1.3.1,28e1dbaa31,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+adb-driver_0.1.8,3e08b4076c,command-injection,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+alfred-workflow-nodejs_2.0.1,9015f35534,command-injection,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+alfred-workflow-nodejs_2.0.1,f6a105a960,command-injection,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+alfred-workflow-nodejs_2.0.1,bf494fc69c,command-injection,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+alfred-workflow-nodejs_2.0.1,19e0631980,command-injection,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+apex-publish-static-files_2.0.0,792da5dd21,command-injection,2,True,True,True,False,probe,reached_not_confirmed,harness reached sink but no crash from fuzzer
+arpping_2.0.0,cb8fdc7130,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+arpping_2.0.0,3f6abeb009,command-injection,3,True,True,False,False,probe,loaded_not_reached,fuzzer did not hit the sink line
+async-git_1.13.1,4a1ec2f417,command-injection,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+async-git_1.13.1,e2520f7e0d,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+async-git_1.13.1,0c7d5dc79c,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+async-git_1.13.1,05decf855e,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+async-git_1.13.1,d456ff9ad7,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+async-git_1.13.1,47d3c35bf7,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+bestzip_2.1.6,63ca916fae,command-injection,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+blamer_0.1.13,971e749caf,command-injection,1,True,True,True,True,,confirmed,crash reproduced
+buns_1.1.6,3a9ee4d15f,command-injection,2,True,True,True,False,syntax,reached_not_confirmed,harness reached sink but no crash from fuzzer
+angular-http-server_1.0.0,b97cbae156,path-traversal,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+angular-http-server_1.0.0,70881ff910,path-traversal,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+api-proxy_0.0.2,d0541f399d,path-traversal,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+api-proxy_0.0.2,0c476a595c,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+api-proxy_0.0.2,97eaddc8b5,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+asset-cache_0.0.6,029e512bac,path-traversal,1,True,True,True,True,,confirmed,crash reproduced
+asset-cache_0.0.6,a55ef60143,path-traversal,1,True,True,True,True,,confirmed,crash reproduced
+bestzip_2.1.6,cde0648453,path-traversal,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+bestzip_2.1.6,ea0300a24d,path-traversal,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+bestzip_2.1.6,0a2dd90322,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+bestzip_2.1.6,ef64fd03fd,path-traversal,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+buns_1.1.6,f1b1792d1a,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,831daf24a5,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,fa5df8d4f7,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,86f56b34cb,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,e387369c8d,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,294dd70c72,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,0981a3530b,path-traversal,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,695f5c04aa,path-traversal,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,4e5b1ad7b7,path-traversal,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,7158e37068,path-traversal,2,True,True,True,False,syntax,reached_not_confirmed,harness reached sink but no crash from fuzzer
+buns_1.1.6,bac62a3afd,path-traversal,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,f9733137ce,path-traversal,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,6a3dd194b6,path-traversal,1,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+alfred-workflow-nodejs_2.0.1,adf3225944,prototype-pollution,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+alfred-workflow-nodejs_2.0.1,684a9194af,prototype-pollution,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+alfred-workflow-nodejs_2.0.1,76e6d9b0c9,prototype-pollution,3,True,True,False,False,probe,loaded_not_reached,fuzzer did not hit the sink line
+alfred-workflow-nodejs_2.0.1,7679bb8e7d,prototype-pollution,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+blamer_0.1.13,0e9d4766c5,prototype-pollution,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+blamer_0.1.13,87f10f6bda,prototype-pollution,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+buns_1.1.6,38c1722d51,prototype-pollution,1,True,True,True,True,,confirmed,crash reproduced
+buns_1.1.6,77d94ad750,prototype-pollution,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,b3016bdd83,prototype-pollution,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+adb-driver_0.1.8,4e1e20bb63,redos,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+alfred-workflow-nodejs_2.0.1,c10d47f294,redos,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+api-proxy_0.0.2,69c4a51f62,redos,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+api-proxy_0.0.2,7431248b7a,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+api-proxy_0.0.2,383d4bbee0,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+api-proxy_0.0.2,5cd7fab582,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+api-proxy_0.0.2,dbcd2f63d5,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+arpping_2.0.0,13f29f7ad6,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+arpping_2.0.0,d743fff5e2,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+arpping_2.0.0,e0d434123c,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+arpping_2.0.0,cab298854d,redos,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+arpping_2.0.0,24f41ac1d0,redos,3,True,False,False,False,probe,syntax_ok_not_loaded,load error at stage=probe
+async-git_1.13.1,0a3a434f7d,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+blamer_0.1.13,d248f9d574,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+blamer_0.1.13,d4c000770a,redos,1,True,True,True,False,,reached_not_confirmed,harness reached sink but no crash from fuzzer
+buns_1.1.6,304f6c6e4d,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,059d242a2d,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,b44f593222,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,8c91dd442c,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,f910a274c6,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,c9813be821,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,6ede795142,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,373d0cd286,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,c34b255855,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,e5efad469a,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,3779334e0b,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,2efef8a7cf,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,127c9dc23c,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,57916d6a6a,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,2e73c719e2,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,866d374288,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,7bacbceca5,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,4841c7aef4,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,371a8ea276,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,072717264d,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,55832e7c31,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,5de17d0178,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,52b6085db7,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,849945b50b,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,4ef5e419fc,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,a0d18a84a4,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,d8f3f2c065,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,8083bb59f6,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,b4cba1b430,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,87e96b500e,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,d6d708aae1,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,9a4dee04be,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,70323ea2fd,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,bbd596c9fd,redos,3,True,True,False,False,reach,loaded_not_reached,fuzzer did not hit the sink line
+buns_1.1.6,c75cc3614f,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,b3d3401a94,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,356696ee99,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,2b6fc0aec9,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,b5933f64c2,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,3cf3f52a4d,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,c88ed908d6,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)
+buns_1.1.6,a8f653bfd6,redos,3,False,False,False,False,syntax,syntax_fail,syntax or parse error (stage=syntax)

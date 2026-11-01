@@ -1,0 +1,25 @@
+{
+  "description": "Seed inputs that trigger Jazzer's CommandInjection detector. The sentinel string 'jaz_zer' is what the detector plants, so including it directly nudges the fuzzer into keeping it as execution flows into child_process.exec.",
+  "seeds": [
+    "jaz_zer",
+    "foo; jaz_zer",
+    "foo && jaz_zer",
+    "foo | jaz_zer",
+    "`jaz_zer`",
+    "$(jaz_zer)",
+    "foo;jaz_zer",
+    "foo'jaz_zer",
+    "foo\"jaz_zer",
+    "foo\\njaz_zer",
+    "foo\\x00jaz_zer",
+    "foo\\x1bjaz_zer",
+    ";jaz_zer;",
+    "||jaz_zer",
+    "&&jaz_zer",
+    "foo > /tmp/jaz_zer",
+    "foo < jaz_zer",
+    "127.0.0.1;jaz_zer",
+    "example.com$(jaz_zer)",
+    "foo.txt`jaz_zer`"
+  ]
+}

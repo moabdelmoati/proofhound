@@ -44,6 +44,7 @@ class Harness(BaseModel):
     attempts: int = 1
     compiled: bool = False
     reached_target: bool = False
+    confirmed: bool = False
     produced_by: ModelTier = "large"
 
 

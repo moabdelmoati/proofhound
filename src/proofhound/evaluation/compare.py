@@ -66,6 +66,41 @@ def _print_table(rows: list[dict]) -> None:
         print("  ".join(str(r[k]).ljust(widths[k]) for k in keys))
 
 
+def ground_truth_findings(findings: list, manifest: dict, case_id: str) -> list:
+    """The SAST finding(s) that match the case's authoritative ground_truth vulnerability.
+
+    case.yaml records one real CVE per case as ground_truth: {class, sink: "path:line[:col]"}.
+    We keep the SAST finding whose class and sink line match it, so evaluation scores the real
+    vulnerability instead of the full, over-approximate SAST finding set.
+    """
+    gt = manifest.get("ground_truth") or {}
+    gt_sink = gt.get("sink") or manifest.get("sink")
+    gt_class = gt.get("class") or manifest.get("vuln_class")
+    if not gt_sink or ":" not in gt_sink:
+        print(f"[{case_id}] ground_truth has no usable sink — cannot filter")
+        return []
+    path_part, line_part = gt_sink.rsplit(":", 2)[0], gt_sink.rsplit(":", 2)[1]
+    try:
+        gt_line = int(line_part)
+    except ValueError:
+        return []
+    wanted = path_part.replace("\\", "/").lstrip("./")
+
+    matches = [
+        f for f in findings
+        if f.line == gt_line
+        and f.file.as_posix().replace("\\", "/").endswith(wanted)
+        and (gt_class is None or f.vuln_class == gt_class)
+    ]
+    if not matches:
+        # Fall back to line-only (a class mislabel in SAST should not hide the real finding).
+        matches = [
+            f for f in findings
+            if f.line == gt_line and f.file.as_posix().replace("\\", "/").endswith(wanted)
+        ]
+    return matches
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cases", default="benchmark/cases", type=Path)
@@ -73,7 +108,23 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--models", nargs="+", required=True, help="Model keys from the config.")
     ap.add_argument("--out", default="runs/compare", type=Path)
     ap.add_argument("--max-cases", type=int, default=None, help="Only the first N cases (smoke test).")
+    ap.add_argument("--progress-every", type=int, default=None, metavar="N",
+                    help="Print a running summary after every N cases.")
     ap.add_argument("--no-fuzz", action="store_true", help="Stop at coverage; skip crash confirmation.")
+    ap.add_argument("--class-seeds", action=argparse.BooleanOptionalAction, default=True,
+                    help="Seed Jazzer corpus with class-specific payloads (default true).")
+    ap.add_argument("--rejection-sampling", action=argparse.BooleanOptionalAction, default=False,
+                    help="Generate harnesses using rejection sampling across temperatures.")
+    ap.add_argument("--call-chain-v2", dest="call_chain_v2", action="store_true", default=True,
+                    help="Use enriched call chain with arg types and preconditions (default).")
+    ap.add_argument("--call-chain-v1", "--no-call-chain-v2", dest="call_chain_v2", action="store_false",
+                    help="Use legacy v1 call chain format.")
+    ap.add_argument("--ground-truth-only", action="store_true",
+                    help="Evaluate only each case's ground_truth vulnerability (the real CVE from "
+                         "case.yaml), not every SAST finding. The SAST pass over-approximates — it "
+                         "flags .split()/linear regexes as redos, etc. — so the full finding set is "
+                         "mostly false positives. The benchmark ships one authoritative finding per "
+                         "case; this scores against that.")
     args = ap.parse_args(argv)
 
     from dotenv import load_dotenv
@@ -91,6 +142,9 @@ def main(argv: list[str] | None = None) -> None:
     from proofhound.core.llm.client import build_client
 
     settings = load_settings(args.config)
+    settings.harness.class_seeds = args.class_seeds
+    settings.harness.rejection_sampling = args.rejection_sampling
+    settings.harness.call_chain_v2 = args.call_chain_v2
     missing = [k for k in args.models if k not in settings.models]
     if missing:
         sys.exit(f"unknown model(s) {missing}; available: {', '.join(settings.models)}")
@@ -112,7 +166,9 @@ def main(argv: list[str] | None = None) -> None:
             client=build_client(key, cfg), model=cfg.model or key, adapter=adapter,
             sandbox=sandbox, settings=settings.harness, logger=loggers[key],
         )
-        fuzzers[key] = FuzzerAgent(sandbox, adapter, attempt_logger=loggers[key])
+        fuzzers[key] = FuzzerAgent(
+            sandbox, adapter, attempt_logger=loggers[key], class_seeds=args.class_seeds,
+        )
 
     case_dirs = sorted(
         d for d in args.cases.iterdir() if (d / "case.yaml").exists() and (d / "repo").exists()
@@ -122,6 +178,7 @@ def main(argv: list[str] | None = None) -> None:
     overall = {k: Tally() for k in args.models}
     by_class: dict[tuple[str, str], Tally] = defaultdict(Tally)
     records: list[dict] = []
+    cases_done = 0
 
     for case_dir in case_dirs:
         manifest = yaml.safe_load((case_dir / "case.yaml").read_text(encoding="utf-8"))
@@ -131,18 +188,29 @@ def main(argv: list[str] | None = None) -> None:
         except Exception as e:
             print(f"[{case_id}] analyzer error: {e}")
             continue
-        print(f"[{case_id}] {len(analysis.findings)} finding(s)")
+        findings = analysis.findings
+        if args.ground_truth_only:
+            findings = ground_truth_findings(findings, manifest, case_id)
+            if not findings:
+                print(f"[{case_id}] no SAST finding matches the ground_truth sink — skipped")
+                continue
 
-        for finding in analysis.findings:
+        print(f"[{case_id}] {len(findings)} finding(s)"
+              f"{' (ground_truth only)' if args.ground_truth_only else ''}")
+
+        for finding in findings:
             for key in args.models:
                 out = args.out / case_id / finding.id / key
                 out.mkdir(parents=True, exist_ok=True)
                 before = len(loggers[key].read())
                 start = time.monotonic()
                 try:
-                    harness = agents[key].produce(finding, repo, out)
-                    confirmed = False
-                    if harness is not None and not args.no_fuzz:
+                    if args.rejection_sampling:
+                        harness = agents[key].produce_with_sampling(finding, repo, out)
+                    else:
+                        harness = agents[key].produce(finding, repo, out)
+                    confirmed = getattr(harness, "confirmed", False)
+                    if not confirmed and harness is not None and not args.no_fuzz and harness.reached_target:
                         job = FuzzJob(finding, repo, out, settings.budgets.fuzz_time_per_target_s)
                         confirmed = fuzzers[key].run(job).confirmed
                 except SandboxUnavailable as e:
@@ -160,7 +228,7 @@ def main(argv: list[str] | None = None) -> None:
                     "syntax_ok": any(a.syntax_ok for a in attempts),
                     "loaded": any(a.loaded for a in attempts),
                     "reached": any(a.reached for a in attempts),
-                    "confirmed": confirmed,
+                    "confirmed": confirmed or any(a.crash_confirmed for a in attempts),
                     "tokens": sum(a.input_tokens + a.output_tokens for a in attempts),
                     "seconds": round(time.monotonic() - start, 1),
                 }
@@ -170,6 +238,14 @@ def main(argv: list[str] | None = None) -> None:
                 best = next((s for s in reversed(STAGES) if record[s]), "failed")
                 print(f"  [{key}] {best} in {record['attempts']} attempt(s) | "
                       f"{record['tokens']:,} tokens | {record['seconds']}s")
+
+        cases_done += 1
+        if args.progress_every and cases_done % args.progress_every == 0:
+            print(f"\n{'='*60}")
+            print(f"PROGRESS — {cases_done}/{len(case_dirs)} cases done")
+            print(f"{'='*60}")
+            _print_table([overall[k].row(model=k) for k in args.models])
+            print()
 
     rows = [overall[k].row(model=k) for k in args.models]
     class_rows = [t.row(model=k, vuln_class=c) for (k, c), t in sorted(by_class.items())]

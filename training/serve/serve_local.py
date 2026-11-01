@@ -67,10 +67,15 @@ def _load(adapter: str, base: str | None, device: str, load_4bit: bool):
 
 
 def _generate(messages: list[dict], max_tokens: int, temperature: float) -> tuple[str, int, int, str]:
+    import gc
     import torch
 
     tok, model = _STATE["tok"], _STATE["model"]
     prompt = fmt.render_prompt(tok, messages, _STATE["prompt_budget"])
+    # Free cached allocations before each forward pass to avoid fragmentation OOM.
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        gc.collect()
     inputs = tok(prompt, return_tensors="pt", add_special_tokens=False).to(model.device)
     sampling = {"do_sample": True, "temperature": temperature} if temperature > 0 else {"do_sample": False}
     with torch.no_grad():
@@ -107,11 +112,17 @@ class Handler(BaseHTTPRequestHandler):
         req = json.loads(self.rfile.read(length) or b"{}")
         with _GENERATE_LOCK:
             start = time.monotonic()
-            text, prompt_tokens, completion_tokens, finish = _generate(
-                req.get("messages", []),
-                req.get("max_completion_tokens") or req.get("max_tokens") or 1536,
-                req.get("temperature") or 0.0,
-            )
+            try:
+                text, prompt_tokens, completion_tokens, finish = _generate(
+                    req.get("messages", []),
+                    req.get("max_completion_tokens") or req.get("max_tokens") or 1536,
+                    req.get("temperature") or 0.0,
+                )
+            except RuntimeError as exc:
+                import traceback
+                traceback.print_exc()
+                self._send(500, {"error": {"message": str(exc), "type": "server_error"}})
+                return
             seconds = time.monotonic() - start
         print(f"{time.strftime('%H:%M:%S')} prompt {prompt_tokens} -> {completion_tokens} tokens ({finish}) "
               f"in {seconds:.1f}s ({completion_tokens / max(seconds, 1e-6):.1f} tok/s)", flush=True)
