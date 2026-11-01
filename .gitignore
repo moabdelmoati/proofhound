@@ -44,3 +44,5 @@ scratch/
 .env.bak
 
 deploy/.demo_instance
+
+benchmark/demo-case/
