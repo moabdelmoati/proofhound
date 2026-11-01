@@ -1,0 +1,65 @@
+{
+  "name": "proofhound",
+  "displayName": "ProofHound",
+  "description": "Prove vulnerabilities instead of guessing — SAST-guided analysis and fuzzing for JS/TS, inline in your editor.",
+  "version": "0.1.0",
+  "publisher": "moabdelmoati",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moabdelmoati/proofhound.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Linters", "Testing", "Other"],
+  "keywords": ["security", "sast", "fuzzing", "vulnerability", "javascript", "typescript"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "proofhound.analyzeCommit",
+        "title": "ProofHound: Analyze Changed Functions (SAST)"
+      },
+      {
+        "command": "proofhound.scanCommit",
+        "title": "ProofHound: Scan & Prove (full pipeline)"
+      },
+      {
+        "command": "proofhound.clearDiagnostics",
+        "title": "ProofHound: Clear Findings"
+      }
+    ],
+    "configuration": {
+      "title": "ProofHound",
+      "properties": {
+        "proofhound.executable": {
+          "type": "string",
+          "default": "proofhound",
+          "description": "Path to the proofhound CLI (installed via `pip install proofhound`)."
+        },
+        "proofhound.config": {
+          "type": "string",
+          "default": "configs/default.yaml",
+          "description": "Path to a ProofHound config file, relative to the workspace root."
+        },
+        "proofhound.commit": {
+          "type": "string",
+          "default": "HEAD",
+          "description": "Git commit to analyze against its parent."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.0",
+    "@types/vscode": "1.85.0",
+    "typescript": "5.4.5"
+  }
+}

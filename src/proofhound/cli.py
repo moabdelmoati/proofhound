@@ -46,6 +46,9 @@ def analyze(
     language: str = typer.Option(
         None, help="javascript | python. Defaults to the config's language."
     ),
+    sarif: Path = typer.Option(
+        None, help="Also write SAST findings as SARIF 2.1.0 to this path (for editors / code scanning)."
+    ),
 ) -> None:
     """List SAST findings on the functions changed by a commit (no fuzzing)."""
     settings = load_settings(config)
@@ -62,6 +65,11 @@ def analyze(
     for f in analysis.findings:
         fn = f.function.name if f.function else "?"
         console.print(f"  [{f.severity.value}] {f.rule_id}  {f.file.as_posix()}:{f.line}  {fn}")
+    if sarif is not None:
+        from proofhound.core.sarif import write_sarif_findings
+
+        n = write_sarif_findings(analysis.findings, __version__, sarif)
+        console.print(f"\nSARIF: {sarif}  ({n} result{'s' if n != 1 else ''})")
 
 
 @app.command()
